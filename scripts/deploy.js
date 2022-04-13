@@ -1,8 +1,8 @@
 async function main() {
-    const Seductions = await ethers.getContractFactory("Seductions")
+    const RaceKingdom = await ethers.getContractFactory("RaceKingdom")
   
     // Start deployment, returning a promise that resolves to a contract object
-    const myContract = await Seductions.deploy()
+    const myContract = await RaceKingdom.deploy()
     await myContract.deployed()
     console.log("Contract deployed to address:", myContract.address)
   }
