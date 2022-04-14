@@ -42,7 +42,7 @@ module.exports = {
       apiKey: BSC_API_KEY
    },
    solidity: {
-      version: "0.5.16",
+      version: "0.8.0",
       settings: {
          optimizer: {
             enabled: true
