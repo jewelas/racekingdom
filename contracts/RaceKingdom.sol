@@ -339,6 +339,8 @@ contract Ownable is Context {
 contract RaceKingdom is Context, IBEP20, Ownable {
   using SafeMath for uint256;
 
+  uint256 public constant MAX_SUPPLY = 3700000000;
+
   mapping (address => uint256) private _balances;
 
   mapping (address => mapping (address => uint256)) private _allowances;
@@ -352,7 +354,7 @@ contract RaceKingdom is Context, IBEP20, Ownable {
     _name = "Race Kingdom";
     _symbol = "RKPO";
     _decimals = 18;
-    _totalSupply = 3700000000;
+    _totalSupply = 0;
     _balances[msg.sender] = _totalSupply;
 
     emit Transfer(address(0), msg.sender, _totalSupply);
@@ -494,8 +496,8 @@ contract RaceKingdom is Context, IBEP20, Ownable {
    *
    * - `msg.sender` must be the token owner
    */
-  function mint(uint256 amount) public onlyOwner returns (bool) {
-    _mint(_msgSender(), amount);
+  function mint(address account, uint256 amount) public onlyOwner returns (bool) {
+    _mint(account, amount);
     return true;
   }
 
