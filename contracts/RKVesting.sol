@@ -103,5 +103,11 @@ contract RKVesting is Context, Ownable {
         _vestingPeriod[_ecosystem] = vestingPeriod;
         return true;
     }
+
+    function Trigger () public onlyOwner return (bool) {
+        require(!_isTrigger, "Already triggered");
+        _isTrigger = true;
+        _start = now;
+    }
 }
 
