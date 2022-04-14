@@ -7,6 +7,13 @@ import "./Ownable.sol";
 import "./IRaceKingdom.sol";
 
 contract RKVesting is Context, Ownable {
+    using SafeMath for uint256;
+    
+    IRaceKingdom _racekingdom;
 
+
+    constructor (address RaceKingdomAddr) {
+        _racekingdom = IRaceKingdom(RaceKingdomAddr);
+    }
 }
 
