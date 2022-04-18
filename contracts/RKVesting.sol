@@ -197,6 +197,7 @@ contract RKVesting is Context, Ownable {
     }
 
     function  Month () public view returns(uint256) {
+        require(_isTriggered, "Not triggered yet");
         uint256 month = (block.timestamp - _start).div(30 days).add(1);
         return month;
     }
@@ -247,6 +248,7 @@ contract RKVesting is Context, Ownable {
 
     function _release (uint256 fundId) internal onlyOwner returns (bool) {
         uint256 unreleased = releasableAmount(fundId);
+        require(_isTriggered, "Not triggered yet");
         require(unreleased > 0, "No releasable amount");
         require(released[fundId].add(unreleased) <= allocation[fundId], "This release would exceed the allocated amount");
         require(_beneficiary[fundId] != address(0), "Beneficiary address not set");
