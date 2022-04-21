@@ -83,7 +83,7 @@ contract RKVesting is Context, Ownable {
         _racekingdom.transfer(msg.sender, amount);
     }
 
-    function rewardsOf (address holder) returns(uint256) {
+    function rewardsOf (address holder) public view returns(uint256) {
         return _rewards[holder];
     }
 
@@ -95,5 +95,24 @@ contract RKVesting is Context, Ownable {
         return _totalRewards;
     }
     
+    function calculateReward(address holder) public view returns(uint256){
+        //calculate method
+    }
+
+    function distributeRewards() public onlyOwner {
+        for (uint256 i=1; i <= _stakeholdersCount; i++) {
+            address stakeholder = _stakeholders[i];
+            uint256 reward = calculateReward(stakeholder);
+            _rewards[stakeholder] = _rewards[stakeholder].add(reward);
+        }
+    }
+
+    function withdrawReward () public {
+        //withdraw mechanism
+        uint256 reward = _rewards[msg.sender];
+        _rewards[msg.sender] = 0;
+        _racekingdom.transfer(msg.sender, reward);
+    }
+
 }
 
