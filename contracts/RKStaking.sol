@@ -71,6 +71,7 @@ contract RKVesting is Context, Ownable {
     }
 
     function createStake(uint256 amount) public {
+        //record staked time.
         require(_racekingdom.transferFrom(msg.sender, address(this), amount), "Transer Failed!");
         if(!isStakeholder(msg.sender)) addStakeholder(msg.sender);
         _stakes[msg.sender] = _stakes[msg.sender].add(amount);
@@ -100,6 +101,7 @@ contract RKVesting is Context, Ownable {
     }
 
     function distributeRewards() public onlyOwner {
+        //distribute to specific users.
         for (uint256 i=1; i <= _stakeholdersCount; i++) {
             address stakeholder = _stakeholders[i];
             uint256 reward = calculateReward(stakeholder);
