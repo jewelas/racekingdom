@@ -5,6 +5,7 @@ import "./Context.sol";
 import "./SafeMath.sol";
 import "./Ownable.sol";
 import "./IRaceKingdom.sol";
+import "./IRKVesting.sol";
 
 contract RKVesting is Context, Ownable {
     using SafeMath for uint256;
@@ -12,16 +13,23 @@ contract RKVesting is Context, Ownable {
     mapping (uint256 => address) internal _stakeholders;
     mapping (address => uint256) internal _stakeholderIndex;
     mapping(address => uint256) internal _stakes;
+    mapping(address => uint256) internal _rewards;
     uint256 _stakeholdersCount;
 
 
     
 
     IRaceKingdom _racekingdom;
+    IRKVesting _rkvesting;
 
 
-    constructor (address RaceKingdomAddr) {
+    constructor (address RaceKingdomAddr, address RKVestingAddr) {
         _racekingdom = IRaceKingdom(RaceKingdomAddr);
+        _rkvesting = IRKVesting(RKVestingAddr);
+    }
+
+    function quarter () public view returns(uint256) {
+        return ((_rkvesting.Month().add(2)).div(3));
     }
 
     function  isStakeholder(address addr) public view returns(bool) {
@@ -73,6 +81,18 @@ contract RKVesting is Context, Ownable {
         _stakes[msg.sender] = _stakes[msg.sender].sub(amount);
         if(_stakes[msg.sender] == 0) removeStakeholder(msg.sender);
         _racekingdom.transfer(msg.sender, amount);
+    }
+
+    function rewardsOf (address holder) returns(uint256) {
+        return _rewards[holder];
+    }
+
+    function totalRewards () public view returns(uint256) {
+        uint256 _totalRewards = 0;
+        for (uint256 i=1; i <= _stakeholdersCount; i++) {
+            _totalRewards = _totalRewards.add(_rewards[_stakeholders[i]]);
+        }
+        return _totalRewards;
     }
     
 }
