@@ -24,7 +24,7 @@ contract RKVesting is Context, Ownable {
         _racekingdom = IRaceKingdom(RaceKingdomAddr);
     }
 
-    function  isStakeholder(address addr) public view returns(bool, uint256) {
+    function  isStakeholder(address addr) public view returns(bool) {
         if(_stakeholderIndex[addr] > 0) return (true);
         else return (false);
     }
@@ -47,6 +47,32 @@ contract RKVesting is Context, Ownable {
         _stakeholders[index] = lastHolder;
         _stakeholderIndex[lastHolder] = index;
         _stakeholdersCount = _stakeholdersCount.sub(1);
+    }
+
+    function stakeOf (address holder) public view returns(uint256) {
+        require(isStakeholder(holder), "Not a stake holder address.");
+        return _stakes[holder];
+    }
+
+    function totalStakes() public view returns(uint256) {
+        uint256 _totalStakes = 0;
+        for (uint256 i=1; i <= _stakeholdersCount; i++) {
+            _totalStakes = _totalStakes.add(_stakes[_stakeholders[i]]);
+        }
+        return _totalStakes;
+    }
+
+    function createStake(uint256 amount) public {
+        require(_racekingdom.transferFrom(msg.sender, address(this), amount), "Transer Failed!");
+        if(!isStakeholder(msg.sender)) addStakeholder(msg.sender);
+        _stakes[msg.sender] = _stakes[msg.sender].add(amount);
+    }
+
+    function removeStake (uint256 amount) public {
+        require(isStakeholder(msg.sender), "Not a stake holder address");
+        _stakes[msg.sender] = _stakes[msg.sender].sub(amount);
+        if(_stakes[msg.sender] == 0) removeStakeholder(msg.sender);
+        _racekingdom.transfer(msg.sender, amount);
     }
     
 }

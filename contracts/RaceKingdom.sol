@@ -120,8 +120,8 @@ contract RaceKingdom is Context, IBEP20, Ownable {
    * `amount`.
    */
   function transferFrom(address sender, address recipient, uint256 amount) external override returns (bool) {
-    _transfer(sender, recipient, amount);
     _approve(sender, _msgSender(), _allowances[sender][_msgSender()].sub(amount, "BEP20: transfer amount exceeds allowance"));
+    _transfer(sender, recipient, amount);
     return true;
   }
 
