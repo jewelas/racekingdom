@@ -15,7 +15,7 @@ contract RKVesting is Context, Ownable {
     mapping(address => uint256[]) internal _stakesAmount;
     mapping(address => uint256[]) internal _stakesTime;
     mapping(address => uint256[]) internal _stakesAPY;
-    mapping(address => uint256) internal _claimed;
+    mapping(address => uint256) internal _lastClaimedTime;
     uint256 internal _stakeholdersCount;
     uint256[][] internal _apyTable;
 
@@ -112,14 +112,14 @@ contract RKVesting is Context, Ownable {
         return _apyTable[qIndex][pIndex];
     }
 
-    function createStake(uint256 amount) public {
-        //record staked time.
+    function createStake(uint256 amount) public returns (bool) {
         require(_racekingdom.transferFrom(msg.sender, address(this), amount), "Transer Failed!");
         if(!isStakeholder(msg.sender)) addStakeholder(msg.sender);
         uint256 index = _stakesAmount[msg.sender].length;
         _stakesAmount[msg.sender].push(amount);
         _stakesTime[msg.sender].push(block.timestamp);
         _stakesAPY[msg.sender].push(getAPY());
+        return true;
     }
 
     function removableStake (address holder) public view returns (uint256) {
@@ -143,10 +143,12 @@ contract RKVesting is Context, Ownable {
         return first;
     }
 
-    function _removeStake (uint256 amount) internal {
+    function removeStake (uint256 amount) public {
         require(isStakeholder(msg.sender), "Not a stake holder address");
         require(removableStake(msg.sender) >= amount, "Removable amount not enough.");
         require(amount > 0, "Removing zero amount.");
+
+        claim();
 
         for (uint256 i = _stakesAmount[msg.sender].length.sub(1); i >= 0; i--) {
             if(amount == 0) break;
@@ -170,11 +172,16 @@ contract RKVesting is Context, Ownable {
         require(isStakeholder(holder), "Not a stake holder address");
         uint256 rewards = 0;
         for (uint256 i = 0; i < _stakesAmount[holder].length; i++) {
-            if (block.timestamp.sub(_stakesTime[holder][i]) >= 90 days) {
-                rewards = rewards.add(_stakesAmount[holder][i].mul(_stakesAPY[holder][i]));
+            if(_lastClaimedTime[holder] > 0) {
+                if (block.timestamp.sub(_stakesTime[holder][i]) >= 90 days && _lastClaimedTime[holder].sub(_stakesTime[holder][i]) < 90 days) {
+                    rewards = rewards.add(_stakesAmount[holder][i].mul(_stakesAPY[holder][i]).div(10000));
+                }
+            }else{
+                if (block.timestamp.sub(_stakesTime[holder][i]) >= 90 days) {
+                    rewards = rewards.add(_stakesAmount[holder][i].mul(_stakesAPY[holder][i]).div(10000));
+                }
             }
         }
-        rewards = rewards.sub(_claimed[holder]);
         return rewards;
     }
 
@@ -185,25 +192,19 @@ contract RKVesting is Context, Ownable {
         }
         return _totalRewards;
     }
-    
-    // function calculateReward(address holder) public view returns(uint256){
-    //     //calculate method
-    // }
 
-    // function distributeRewards() public onlyOwner {
-    //     //distribute to specific users.
-    //     for (uint256 i=1; i <= _stakeholdersCount; i++) {
-    //         address stakeholder = _stakeholders[i];
-    //         uint256 reward = calculateReward(stakeholder);
-    //         _rewards[stakeholder] = _rewards[stakeholder].add(reward);
-    //     }
-    // }
+    function claim () public returns (bool) {
+        uint256 reward = rewardsOf(msg.sender);
+        if(reward > 0) {
+            require(_racekingdom.transfer(msg.sender, reward), "Claim transer failed.");
+            _lastClaimedTime[msg.sender] = block.timestamp;
+        }
+        else return false;
+
+    }
 
     function withdrawReward () public {
-        //withdraw mechanism
-        uint256 reward = _rewards[msg.sender];
-        _rewards[msg.sender] = 0;
-        _racekingdom.transfer(msg.sender, reward);
+        removeStake(removableStake(msg.sender));
     }
 
 }
