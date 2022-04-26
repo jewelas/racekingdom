@@ -198,9 +198,14 @@ contract RKVesting is Context, Ownable {
 
     function  Month () public view returns(uint256) {
         require(_isTriggered, "Not triggered yet");
-        uint256 month = (block.timestamp - _start).div(30 days).add(1);
-        return month;
+        return getMonth(block.timestamp);
     }
+
+    function getMonth (uint256 time) public view returns (uint256) {
+        require(_isTriggered, "Not triggered yet");
+        uint256 month = (time.sub(_start)).div(30 days).add(1);
+        return month;
+    } 
 
     function vestedAmount (uint256 fundId) public view returns (uint256) {
         uint256 vested = 0;
@@ -208,6 +213,16 @@ contract RKVesting is Context, Ownable {
             vested = vested.add(_vestingAmount[fundId][i]);
         }
         return vested;
+    }
+
+    function quarterVestingAmount (uint256 quarter) public view returns (uint256) {
+        uint256 amount = 0;
+        for (uint256 i = quarter.mul(3).sub(3); i < quarter.mul(3); i++){
+            for(uint256 fundId = 1; fundId <= 8; fundId++) {
+                amount = amount.add(_vestingAmount[fundId][i]);
+            }
+        }
+        return amount;
     }
 
     function releasableAmount (uint256 fundId) public view returns (uint256) {
