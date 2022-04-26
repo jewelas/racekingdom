@@ -14,10 +14,8 @@ contract RKVesting is Context, Ownable {
     mapping (address => uint256) internal _stakeholderIndex;
     mapping(address => uint256[]) internal _stakesAmount;
     mapping(address => uint256[]) internal _stakesTime;
-    mapping(address => uint256[]) internal _stakesAPY;
     mapping(address => uint256) internal _lastClaimedTime;
     uint256 internal _stakeholdersCount;
-    uint256[][] internal _apyTable;
 
 
     
@@ -26,10 +24,9 @@ contract RKVesting is Context, Ownable {
     IRKVesting _rkvesting;
 
 
-    constructor (address RaceKingdomAddr, address RKVestingAddr, uint256[][] memory apyTable) {
+    constructor (address RaceKingdomAddr, address RKVestingAddr) {
         _racekingdom = IRaceKingdom(RaceKingdomAddr);
         _rkvesting = IRKVesting(RKVestingAddr);
-        _apyTable = apyTable;
     }
 
     function quarter () public view returns(uint256) {
@@ -93,7 +90,7 @@ contract RKVesting is Context, Ownable {
         return _totalStakes;
     }
 
-    function quaterStakes(uint256 quar) public view returns (uint256) {
+    function quarterTotalStaked(uint256 quar) public view returns (uint256) {
         uint256 _quaterStakes = 0;
         for (uint256 i=1; i <= _stakeholdersCount; i++) {
             _quaterStakes = _quaterStakes.add(quarterStakeOf(_stakeholders[i], quar));
@@ -101,16 +98,11 @@ contract RKVesting is Context, Ownable {
         return _quaterStakes;
     }
 
-    function getAPY () internal view returns (uint256) {
-        uint256 pIndex;
-        uint256 qIndex;
-        uint256 quarterRelease = _rkvesting.quarterVestingAmount(quarter());
-        uint256 quaterStaked = quaterStakes(quarter());
-        uint256 percentage = quaterStaked.mul(100).div(quarterRelease);
-        if(percentage == 0) pIndex = 0;
-        else pIndex = (percentage.sub(1)).div(5);
-        qIndex = quarter().sub(1);
-        return _apyTable[qIndex][pIndex];
+    function getAPY (uint256 quar) internal view returns (uint256) {
+        uint256 quarterStaked = quarterTotalStaked(quar);
+        uint256 quarterVestingAmount = _rkvesting.quarterVestingAmount(quar.add(1));
+        uint256 apy = quarterVestingAmount.mul(10000).div(quarterStaked);
+        return apy;
     }
 
     function createStake(uint256 amount) public returns (bool) {
@@ -118,7 +110,6 @@ contract RKVesting is Context, Ownable {
         if(!isStakeholder(msg.sender)) addStakeholder(msg.sender);
         _stakesAmount[msg.sender].push(amount);
         _stakesTime[msg.sender].push(block.timestamp);
-        _stakesAPY[msg.sender].push(getAPY());
         return true;
     }
 
@@ -152,10 +143,8 @@ contract RKVesting is Context, Ownable {
                     for (uint256 index = i; index < _stakesAmount[msg.sender].length.sub(1); index++) {
                         _stakesAmount[msg.sender][index] = _stakesAmount[msg.sender][index.add(1)];
                         _stakesTime[msg.sender][index] = _stakesTime[msg.sender][index.add(1)];
-                        _stakesAPY[msg.sender][index] = _stakesAPY[msg.sender][index.add(1)];
                         _stakesAmount[msg.sender].pop();
                         _stakesTime[msg.sender].pop();
-                        _stakesAPY[msg.sender].pop();
                     }
                 }
             }
@@ -170,11 +159,11 @@ contract RKVesting is Context, Ownable {
         for (uint256 i = 0; i < _stakesAmount[holder].length; i++) {
             if(_lastClaimedTime[holder] > 0) {
                 if (block.timestamp.sub(_stakesTime[holder][i]) >= 90 days && _lastClaimedTime[holder].sub(_stakesTime[holder][i]) < 90 days) {
-                    rewards = rewards.add(_stakesAmount[holder][i].mul(_stakesAPY[holder][i]).div(10000));
+                    rewards = rewards.add(_stakesAmount[holder][i].mul(getAPY(getQuarter(_stakesTime[holder][i]))).div(10000));
                 }
             }else{
                 if (block.timestamp.sub(_stakesTime[holder][i]) >= 90 days) {
-                    rewards = rewards.add(_stakesAmount[holder][i].mul(_stakesAPY[holder][i]).div(10000));
+                    rewards = rewards.add(_stakesAmount[holder][i].mul(getAPY(getQuarter(_stakesTime[holder][i]))).div(10000));
                 }
             }
         }
