@@ -7,7 +7,7 @@ import "./Ownable.sol";
 import "./IRaceKingdom.sol";
 import "./IRKVesting.sol";
 
-contract RKVesting is Context, Ownable {
+contract RKStaking is Context, Ownable {
     using SafeMath for uint256;
 
     mapping (uint256 => address) internal _stakeholders;
