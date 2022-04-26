@@ -36,7 +36,7 @@ contract RKVesting is Context, Ownable {
         return ((_rkvesting.Month().add(2)).div(3));
     }
 
-    getQuarter (uint256 time) public view returns (uint256) {
+    function getQuarter (uint256 time) public view returns (uint256) {
         return ((_rkvesting.getMonth(time).add(2)).div(3));
     }
 
@@ -101,9 +101,10 @@ contract RKVesting is Context, Ownable {
         return _quaterStakes;
     }
 
-    function getAPY () internal returns (uint256) {
-        uint256 pIndex, qIndex;
-        uint256 quarterRelease = IRKVesting.quarterVestingAmount(quarter());
+    function getAPY () internal view returns (uint256) {
+        uint256 pIndex;
+        uint256 qIndex;
+        uint256 quarterRelease = _rkvesting.quarterVestingAmount(quarter());
         uint256 quaterStaked = quaterStakes(quarter());
         uint256 percentage = quaterStaked.mul(100).div(quarterRelease);
         if(percentage == 0) pIndex = 0;
@@ -115,7 +116,6 @@ contract RKVesting is Context, Ownable {
     function createStake(uint256 amount) public returns (bool) {
         require(_racekingdom.transferFrom(msg.sender, address(this), amount), "Transer Failed!");
         if(!isStakeholder(msg.sender)) addStakeholder(msg.sender);
-        uint256 index = _stakesAmount[msg.sender].length;
         _stakesAmount[msg.sender].push(amount);
         _stakesTime[msg.sender].push(block.timestamp);
         _stakesAPY[msg.sender].push(getAPY());
@@ -134,15 +134,6 @@ contract RKVesting is Context, Ownable {
 
     }
 
-    function _popMiddle(uint256[] memory arr, uint256 index) internal returns(uint256[] memory) {
-        uint256[] first = arr[:indnex];
-        uint256[] second = arr[index.add(1):];
-        for (uint256 i = 0; i < second.length; i++) {
-            first.push(second[i]);
-        }
-        return first;
-    }
-
     function removeStake (uint256 amount) public {
         require(isStakeholder(msg.sender), "Not a stake holder address");
         require(removableStake(msg.sender) >= amount, "Removable amount not enough.");
@@ -158,9 +149,14 @@ contract RKVesting is Context, Ownable {
                     break;
                 }else {
                     amount = amount.sub(_stakesAmount[msg.sender][i]);
-                    _popMiddle(_stakesAmount[msg.sender], i);
-                    _popMiddle(_stakesTime[msg.sender], i);
-                    _popMiddle(_stakesAPY[msg.sender], i);
+                    for (uint256 index = i; index < _stakesAmount[msg.sender].length.sub(1); index++) {
+                        _stakesAmount[msg.sender][index] = _stakesAmount[msg.sender][index.add(1)];
+                        _stakesTime[msg.sender][index] = _stakesTime[msg.sender][index.add(1)];
+                        _stakesAPY[msg.sender][index] = _stakesAPY[msg.sender][index.add(1)];
+                        _stakesAmount[msg.sender].pop();
+                        _stakesTime[msg.sender].pop();
+                        _stakesAPY[msg.sender].pop();
+                    }
                 }
             }
         }
@@ -198,6 +194,7 @@ contract RKVesting is Context, Ownable {
         if(reward > 0) {
             require(_racekingdom.transfer(msg.sender, reward), "Claim transer failed.");
             _lastClaimedTime[msg.sender] = block.timestamp;
+            return true;
         }
         else return false;
 
