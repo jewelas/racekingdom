@@ -29,11 +29,11 @@ contract RKStaking is Context, Ownable {
         _rkvesting = IRKVesting(RKVestingAddr);
     }
 
-    function quarter () public view returns(uint256) {
+    function quarter () internal view returns(uint256) {
         return ((_rkvesting.Month().add(2)).div(3));
     }
 
-    function getQuarter (uint256 time) public view returns (uint256) {
+    function getQuarter (uint256 time) internal view returns (uint256) {
         return ((_rkvesting.getMonth(time).add(2)).div(3));
     }
 
@@ -42,14 +42,14 @@ contract RKStaking is Context, Ownable {
         else return (false);
     }
 
-    function addStakeholder (address holder) public {
+    function addStakeholder (address holder) internal {
         require(!isStakeholder(holder), "Already exists in holders list.");
         _stakeholdersCount = _stakeholdersCount.add(1);
         _stakeholders[_stakeholdersCount] = holder;
         _stakeholderIndex[holder] = _stakeholdersCount;
     }
 
-    function removeStakeholder(address holder) public {
+    function removeStakeholder(address holder) internal {
         require(isStakeholder(holder), "Not a stake holder address.");
         uint256 index = _stakeholderIndex[holder];
         address lastHolder = _stakeholders[_stakeholdersCount];
@@ -71,7 +71,7 @@ contract RKStaking is Context, Ownable {
         return stakes;
     }
 
-    function quarterStakeOf (address holder, uint256 quar) public view returns(uint256) {
+    function quarterStakeOf (address holder, uint256 quar) internal view returns(uint256) {
         require(isStakeholder(holder), "Not a stake holder address.");
         uint256 stakes = 0;
         for (uint256 i = 0; i < _stakesAmount[holder].length; i++) {
@@ -90,7 +90,7 @@ contract RKStaking is Context, Ownable {
         return _totalStakes;
     }
 
-    function quarterTotalStaked(uint256 quar) public view returns (uint256) {
+    function quarterTotalStaked(uint256 quar) internal view returns (uint256) {
         uint256 _quaterStakes = 0;
         for (uint256 i=1; i <= _stakeholdersCount; i++) {
             _quaterStakes = _quaterStakes.add(quarterStakeOf(_stakeholders[i], quar));
