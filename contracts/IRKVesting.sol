@@ -7,4 +7,8 @@ interface IRKVesting {
     function getMonth (uint256 time) external view returns (uint256);
 
     function quarterVestingAmount (uint256 quarter) external view returns (uint256);
+
+    function quarterVestingAmountOfStakingReward (uint256 quarter) external view returns (uint256);
+
+    function quarterTotalVestingAmount (uint256 quarter) external view returns (uint256);
 }

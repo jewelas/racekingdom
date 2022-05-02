@@ -225,6 +225,25 @@ contract RKVesting is Context, Ownable {
         return amount;
     }
 
+    function quarterTotalVestingAmount (uint256 quarter) public view returns (uint256) {
+        uint256 amount = 0;
+        for (uint256 i = 0; i < quarter.mul(3); i++){
+            for(uint256 fundId = 1; fundId <= 8; fundId++) {
+                amount = amount.add(_vestingAmount[fundId][i]);
+            }
+        }
+        return amount;
+    }
+
+    function quarterVestingAmountOfStakingReward (uint256 quarter) public view returns (uint256) {
+        uint256 amount = 0;
+        uint256 fundId = 7;    //staking reward fund Id.
+        for (uint256 i = quarter.mul(3).sub(3); i < quarter.mul(3); i++){
+            amount = amount.add(_vestingAmount[fundId][i]);
+        }
+        return amount;
+    }
+
     function releasableAmount (uint256 fundId) public view returns (uint256) {
         return vestedAmount(fundId).sub(released[fundId]);
     }
