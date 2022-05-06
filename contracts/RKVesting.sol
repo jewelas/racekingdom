@@ -45,7 +45,7 @@ contract RKVesting is Context, Ownable {
         allocation[_ecosystem] = 407000000;
     }
 
-    function SeedRoundVestingAmount () external view onlyOwner returns (uint256[] memory) {
+    function SeedRoundVestingAmount () external view returns (uint256[] memory) {
         return(_vestingAmount[_seedRound]);
     }
 
@@ -63,7 +63,7 @@ contract RKVesting is Context, Ownable {
         return true;
     }
 
-    function PrivateRoundVestingAmount () external view onlyOwner returns ( uint256[] memory) {
+    function PrivateRoundVestingAmount () external view returns ( uint256[] memory) {
         return( _vestingAmount[_privateRound]);
     }
 
@@ -81,7 +81,7 @@ contract RKVesting is Context, Ownable {
         return true;
     }
 
-    function PublicRoundVestingAmount () external view onlyOwner returns (uint256[] memory) {
+    function PublicRoundVestingAmount () external view returns (uint256[] memory) {
         return(_vestingAmount[_publicRound]);
     }
 
@@ -99,7 +99,7 @@ contract RKVesting is Context, Ownable {
         return true;
     }
 
-    function TeamVestingAmount () external view onlyOwner returns (uint256[] memory) {
+    function TeamVestingAmount () external view returns (uint256[] memory) {
         return(_vestingAmount[_team]);
     }
 
@@ -117,7 +117,7 @@ contract RKVesting is Context, Ownable {
         return true;
     }
 
-    function AdvisorsVestingAmount () external view onlyOwner returns (uint256[] memory) {
+    function AdvisorsVestingAmount () external view returns (uint256[] memory) {
         return(_vestingAmount[_advisors]);
     }
 
@@ -135,7 +135,7 @@ contract RKVesting is Context, Ownable {
         return true;
     }
 
-    function P2EVestingAmount () external view onlyOwner returns (uint256[] memory) {
+    function P2EVestingAmount () external view returns (uint256[] memory) {
         return(_vestingAmount[_p2e]);
     }
 
@@ -153,7 +153,7 @@ contract RKVesting is Context, Ownable {
         return true;
     }
 
-    function StakingVestingAmount () external view onlyOwner returns (uint256[] memory) {
+    function StakingVestingAmount () external view returns (uint256[] memory) {
         return(_vestingAmount[_staking]);
     }
 
@@ -171,7 +171,7 @@ contract RKVesting is Context, Ownable {
         return true;
     }
 
-    function EcosystemVestingAmount () external view onlyOwner returns (uint256[] memory) {
+    function EcosystemVestingAmount () external view returns (uint256[] memory) {
         return(_vestingAmount[_ecosystem]);
     }
 
@@ -221,6 +221,25 @@ contract RKVesting is Context, Ownable {
             for(uint256 fundId = 1; fundId <= 8; fundId++) {
                 amount = amount.add(_vestingAmount[fundId][i]);
             }
+        }
+        return amount;
+    }
+
+    function quarterTotalVestingAmount (uint256 quarter) public view returns (uint256) {
+        uint256 amount = 0;
+        for (uint256 i = 0; i < quarter.mul(3); i++){
+            for(uint256 fundId = 1; fundId <= 8; fundId++) {
+                amount = amount.add(_vestingAmount[fundId][i]);
+            }
+        }
+        return amount;
+    }
+
+    function quarterVestingAmountOfStakingReward (uint256 quarter) public view returns (uint256) {
+        uint256 amount = 0;
+        uint256 fundId = 7;    //staking reward fund Id.
+        for (uint256 i = quarter.mul(3).sub(3); i < quarter.mul(3); i++){
+            amount = amount.add(_vestingAmount[fundId][i]);
         }
         return amount;
     }
