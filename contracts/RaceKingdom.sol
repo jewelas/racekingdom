@@ -12,7 +12,7 @@ import "./Ownable.sol";
 contract RaceKingdom is Context, IBEP20, Ownable {
   using SafeMath for uint256;
 
-  uint256 public constant MAX_SUPPLY = 3700000000;
+  uint256 public constant MAX_SUPPLY = 3700000000000000000000000000;
 
   mapping (address => uint256) private _balances;
 
