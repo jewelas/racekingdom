@@ -24,6 +24,9 @@ contract RKVesting is Context, Ownable {
     uint256 private constant _p2e = 6;
     uint256 private constant _staking = 7;
     uint256 private constant _ecosystem = 8;
+    uint256 private constant _staking30 = 9;
+    uint256 private constant _staking60 = 10;
+    uint256 private constant _staking90 = 11;
 
     bool private _isTriggered;
 
@@ -153,16 +156,21 @@ contract RKVesting is Context, Ownable {
         return true;
     }
 
-    function StakingVestingAmount () external view returns (uint256[] memory) {
-        return(_vestingAmount[_staking]);
+    function StakingVestingAmount () external view returns (uint256[] memory, uint256[] memory, uint256[] memory, uint256[] memory) {
+        return(_vestingAmount[_staking30], _vestingAmount[_staking60], _vestingAmount[_staking90], _vestingAmount[_staking]);
     }
 
     function stakingBeneficiary() public view returns (address) {
         return _beneficiary[_staking];
     }
 
-    function SetStakingVestingAmount (uint256[] memory vestingAmount) public onlyOwner returns (bool) {
-        _vestingAmount[_staking] = vestingAmount;
+    function SetStakingVestingAmount (uint256[] memory vestingAmount30, uint256[] memory vestingAmount60, uint256[] memory vestingAmount90) public onlyOwner returns (bool) {
+        _vestingAmount[_staking30] = vestingAmount30;
+        _vestingAmount[_staking60] = vestingAmount60;
+        _vestingAmount[_staking90] = vestingAmount90;
+        for (uint256 i = 0; i < vestingAmount90.length; i++) {
+            _vestingAmount[_staking].push(vestingAmount30[i].add(vestingAmount60[i]).add(vestingAmount90[i]));
+        }
         return true;
     }
 
@@ -235,11 +243,40 @@ contract RKVesting is Context, Ownable {
         return amount;
     }
 
+    function tillMonthTotalVestingAmount (uint256 month) public view returns (uint256) {
+        uint256 amount = 0;
+        for (uint256 i = 0; i < month; i++){
+            for(uint256 fundId = 1; fundId <= 8; fundId++) {
+                amount = amount.add(_vestingAmount[fundId][i]);
+            }
+        }
+        return amount;
+    }
+
     function quarterVestingAmountOfStakingReward (uint256 quarter) public view returns (uint256) {
         uint256 amount = 0;
-        uint256 fundId = 7;    //staking reward fund Id.
         for (uint256 i = quarter.mul(3).sub(3); i < quarter.mul(3); i++){
-            amount = amount.add(_vestingAmount[fundId][i]);
+            amount = amount.add(_vestingAmount[_staking][i]);
+        }
+        return amount;
+    }
+
+    function monthVestingAmountOfStakingReward30 (uint256 month) public view returns (uint256) {
+        return _vestingAmount[_staking30][month.sub(1)];
+    }
+
+    function bimonthVestingAmountOfStakingReward60 (uint256 bimonth) public view returns (uint256) {
+        uint256 amount = 0;
+        for (uint256 i = bimonth.mul(2).sub(2); i < bimonth.mul(2); i++){
+            amount = amount.add(_vestingAmount[_staking60][i]);
+        }
+        return amount;
+    }
+
+    function quarterVestingAmountOfStakingReward90 (uint256 quarter) public view returns (uint256) {
+        uint256 amount = 0;
+        for (uint256 i = quarter.mul(3).sub(3); i < quarter.mul(3); i++){
+            amount = amount.add(_vestingAmount[_staking90][i]);
         }
         return amount;
     }
