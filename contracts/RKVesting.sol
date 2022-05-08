@@ -48,6 +48,10 @@ contract RKVesting is Context, Ownable {
         allocation[_ecosystem] = 407000000;
     }
 
+    function start () external view returns (uint256) {
+        return (_start);
+    }
+
     function SeedRoundVestingAmount () external view returns (uint256[] memory) {
         return(_vestingAmount[_seedRound]);
     }
