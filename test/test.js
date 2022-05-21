@@ -39,8 +39,8 @@ describe("Racekingdom", function () {
     mainContract = await RaceKingdom.deploy();
     await mainContract.deployed();
 
-    vestingContract = await RKVesting.deploy(mainContract.address);
-    await vestingContract.deployed();
+    // vestingContract = await RKVesting.deploy(mainContract.address);
+    // await vestingContract.deployed();
 
     
 
@@ -49,13 +49,17 @@ describe("Racekingdom", function () {
   });
 
   // Test case
-  // it("Basic Token Contract deployed correctly.", async function () {
-  //   expect((await mainContract.symbol()).toString()).to.equal("RKPO");
-  // });
+  it("Basic Token Contract deployed correctly.", async function () {
+    expect((await mainContract.symbol()).toString()).to.equal("RKPO");
 
-  it("Vesting Contract was triggered correctly.", async function () {
-    await vestingContract.SetSeedRoundVestingAmount(toBigNumberArray(seedRoundVestingAmount));
-    expect(parseInt(await vestingContract.Month())).to.equal(1);
-    expect(await vestingContract.SeedRoundVestingAmount()).to.equal(seedRoundVestingAmount);
+    const [addr1, addr2] = await ethers.getSigners();
+    await mainContract.mint(addr1.address, 50);
+    expect(await mainContract.balanceOf(addr1.address)).to.equal(50);
   });
+
+  // it("Vesting Contract was triggered correctly.", async function () {
+  //   expect(parseInt(await vestingContract.Month())).to.equal(1);
+  //   await vestingContract.SetSeedRoundVestingAmount(toBigNumberArray(seedRoundVestingAmount));
+  //   expect(await vestingContract.SeedRoundVestingAmount()).to.equal(seedRoundVestingAmount);
+  // });
 });
