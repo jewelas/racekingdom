@@ -46,6 +46,7 @@ contract RKVesting is Context, Ownable {
         allocation[_p2e] = 1110000000;
         allocation[_staking] = 555000000;
         allocation[_ecosystem] = 407000000;
+        Trigger();
     }
 
     function start () external view returns (uint256) {

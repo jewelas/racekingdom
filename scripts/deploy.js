@@ -11,13 +11,15 @@ async function main() {
     await vestingContract.deployed()
     
     
-    const stakingContract = await RKStaking.deploy(mainContract.address, vestingContract.address)
-    await stakingContract.deployed()
+    // const stakingContract = await RKStaking.deploy(mainContract.address, vestingContract.address)
+    // await stakingContract.deployed()
 
+    const month = await vestingContract.Month();
+    console.log("month: ", month);
 
     console.log("Main Contract deployed to address:", mainContract.address)
     console.log("Vesting Contract deployed to address:", vestingContract.address)
-    console.log("Staking Contract deployed to address:", stakingContract.address)
+    // console.log("Staking Contract deployed to address:", stakingContract.address)
   }
   
   main()
