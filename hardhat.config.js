@@ -5,8 +5,8 @@ require('dotenv').config();
 require("@nomiclabs/hardhat-ethers");
 require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-waffle");
-const { mnemonic } = require('./secrets.json');
-const { BSC_API_KEY } = process.env;
+// const { mnemonic } = require('./secrets.json');
+const { BSC_API_KEY, PRIVATE_KEY} = process.env;
 
 
 // You need to export an object to set up your config
@@ -27,13 +27,13 @@ module.exports = {
          url: "https://data-seed-prebsc-1-s1.binance.org:8545",
          chainId: 97,
          gasPrice: 20000000000,
-         accounts: { mnemonic: mnemonic }
+         accounts: [`0x${PRIVATE_KEY}`]
       },
       mainnet: {
          url: "https://bsc-dataseed.binance.org/",
          chainId: 56,
          gasPrice: 20000000000,
-         accounts: { mnemonic: mnemonic }
+         accounts: [`0x${PRIVATE_KEY}`]
       }
    },
    etherscan: {
@@ -56,6 +56,6 @@ module.exports = {
       artifacts: "./artifacts"
    },
    mocha: {
-      timeout: 20000
+      timeout: 999999
    }
 };

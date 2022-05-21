@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./Context.sol";
-import "./SafeMath.sol";
-import "./Ownable.sol";
+import "@openzeppelin/contracts/utils/Context.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./IRaceKingdom.sol";
 
 contract RKVesting is Context, Ownable {
@@ -209,7 +209,7 @@ contract RKVesting is Context, Ownable {
     }
 
     function  Month () public view returns(uint256) {
-        require(_isTriggered, "Not triggered yet");
+        require(_isTriggered, "Not triggered yet!");
         return getMonth(block.timestamp);
     }
 
