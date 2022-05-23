@@ -9,6 +9,8 @@ import "./IRKVesting.sol";
 
 contract RKStaking is Context, Ownable {
     using SafeMath for uint256;
+    uint256 private constant daySeconds = 1;
+    // uint256 private constant daySeconds = 86400;
 
     struct ClaimRecord {
         uint256 count;
@@ -288,7 +290,7 @@ contract RKStaking is Context, Ownable {
         require(isStakeholder(holder), "Not a stake holder address");
         uint256 stakes = 0;
         for (uint256 i = 1; i <= _stakes[holder].count; i++) {
-            if (block.timestamp.sub(_stakes[holder].time[i]) >= _stakes[holder].lock[i].mul(1 days)) {
+            if (block.timestamp.sub(_stakes[holder].time[i]) >= _stakes[holder].lock[i].mul(daySeconds)) {
                 stakes = stakes.add(_stakes[holder].amount[i]);
             }
         }
@@ -316,7 +318,7 @@ contract RKStaking is Context, Ownable {
 
         for (uint256 i = _stakes[msg.sender].count; i > 0; i--) {
             if (_usualAmount == 0 && _earlyAmount == 0) break;
-            if (block.timestamp.sub(_stakes[msg.sender].time[i]) >= _stakes[msg.sender].lock[i].mul(1 days)) {
+            if (block.timestamp.sub(_stakes[msg.sender].time[i]) >= _stakes[msg.sender].lock[i].mul(daySeconds)) {
                 if (_usualAmount > 0) {
                     if (_stakes[msg.sender].amount[i] > _usualAmount) {
                         _stakes[msg.sender].amount[i] = _stakes[msg.sender]
@@ -376,7 +378,7 @@ contract RKStaking is Context, Ownable {
         _claimed[msg.sender].count = _claimed[msg.sender].count.add(1);
         _claimed[msg.sender].time[_claimed[msg.sender].count] = block
             .timestamp
-            .sub(2 days);
+            .sub(daySeconds.mul(2));
         _claimed[msg.sender].amount[_claimed[msg.sender].count] = usualAmount;
 
         if (earlyAmount > 0) {
@@ -395,9 +397,9 @@ contract RKStaking is Context, Ownable {
         for (uint256 i = 1; i <= _stakes[holder].count; i++) {
             if (_lastClaimedTime[holder] > _stakes[holder].time[i]) {
                 if (
-                    block.timestamp.sub(_stakes[holder].time[i]) >= _stakes[holder].lock[i].mul(1 days) &&
+                    block.timestamp.sub(_stakes[holder].time[i]) >= _stakes[holder].lock[i].mul(daySeconds) &&
                     _lastClaimedTime[holder].sub(_stakes[holder].time[i]) <
-                    _stakes[holder].lock[i].mul(1 days)
+                    _stakes[holder].lock[i].mul(daySeconds)
                 ) {
                     rewards = rewards.add(
                         _stakes[holder]
@@ -407,7 +409,7 @@ contract RKStaking is Context, Ownable {
                     );
                 }
             } else {
-                if (block.timestamp.sub(_stakes[holder].time[i]) >= _stakes[holder].lock[i].mul(1 days)) {
+                if (block.timestamp.sub(_stakes[holder].time[i]) >= _stakes[holder].lock[i].mul(daySeconds)) {
                     rewards = rewards.add(
                         _stakes[holder]
                             .amount[i]
@@ -434,7 +436,7 @@ contract RKStaking is Context, Ownable {
             _claimed[msg.sender].count = _claimed[msg.sender].count.add(1);
             _claimed[msg.sender].time[_claimed[msg.sender].count] = block
                 .timestamp
-                .sub(2 days);
+                .sub(daySeconds.mul(2));
             _claimed[msg.sender].amount[_claimed[msg.sender].count] = reward;
             _lastClaimedTime[msg.sender] = block.timestamp;
             return true;
@@ -448,7 +450,7 @@ contract RKStaking is Context, Ownable {
     function withdrawClaimed() public returns (bool) {
         uint256 withdrawable;
         for (uint256 i = _claimed[msg.sender].count; i >= 1; i--) {
-            if (block.timestamp.sub(_claimed[msg.sender].time[i]) >= 3 days) {
+            if (block.timestamp.sub(_claimed[msg.sender].time[i]) >= daySeconds.mul(3)) {
                 withdrawable = withdrawable.add(_claimed[msg.sender].amount[i]);
                 _claimed[msg.sender].time[i] = _claimed[msg.sender].time[
                     _claimed[msg.sender].count
