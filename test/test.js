@@ -140,8 +140,8 @@ describe("Racekingdom", function () {
     // //rewardsOf
     // expect(await stakingContract.rewardsOf(addr1.address)).to.deep.equal(BigNumber.from("94300000000000000"));
 
-    // //totalRewards.
-    // expect(await stakingContract.totalRewards()).to.deep.equal(BigNumber.from("94300000000000000"));
+    // //totalRewards.  
+    // expect(await stakingContract.connect(addr1).totalRewards()).to.deep.equal(BigNumber.from("94300000000000000"));
 
     // //remove stake amount of 500000000000000000.
     //test claim, removeStake, removeStakeholder, claimReward, removableStake  function of Staking contract.
