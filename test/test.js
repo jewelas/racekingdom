@@ -54,9 +54,14 @@ describe("Racekingdom", function () {
     expect((await mainContract.symbol()).toString()).to.equal("RKPO");
 
     const [addr1, addr2] = await ethers.getSigners();
+
+    //mint
     await mainContract.mint(addr1.address, 50);
+
+    //balanceOf
     expect(BigNumber.from(await mainContract.balanceOf(addr1.address))).to.deep.equal(BigNumber.from("50"));
 
+    //transfer
     await mainContract.connect(addr1).transfer(addr2.address, 50);
     expect(BigNumber.from(await mainContract.balanceOf(addr2.address))).to.deep.equal(BigNumber.from("50"));
   });
@@ -66,6 +71,7 @@ describe("Racekingdom", function () {
     await vestingContract.Trigger();
 
     //Get current month
+    //test Month(), getMonth()
     expect(parseInt(await vestingContract.Month())).to.equal(1);
 
     //Set Vesting Amounts.
@@ -94,20 +100,40 @@ describe("Racekingdom", function () {
 
 
     //Get 90 APY ceiling for Q1.
+    //getAPY, quarterTotalStaked90, quarterStake90Of
     expect(await stakingContract.getAPY(BigNumber.from(await vestingContract.start()), 90)).to.deep.equal(BigNumber.from(12306));
+
+    //getAPY, quarterTotalStaked60, quarterStake60Of
+    expect(await stakingContract.getAPY(BigNumber.from(await vestingContract.start()), 60)).to.deep.equal(BigNumber.from(1844));
+
+    //getAPY, quarterTotalStaked30, quarterStake30Of
+    expect(await stakingContract.getAPY(BigNumber.from(await vestingContract.start()), 30)).to.deep.equal(BigNumber.from(943));
 
 
     //Stake amount of 100.
     const [addr1] = await ethers.getSigners();
+
+    //test mint function of token contract.
     await mainContract.mint(addr1.address, 100);
+
+    //test approve function of token contract.
     await mainContract.connect(addr1).approve(stakingContract.address, 100);
+
+    //test createStake function of Staking contract.
+    //createStake, addStakeholder.
     await stakingContract.connect(addr1).createStake(100, 90);
 
+    //test isStakeholder function.
     expect(await stakingContract.isStakeholder(addr1.address)).to.deep.equal(true);
+
+    //test stakeOf function.
     expect(await stakingContract.stakeOf(addr1.address)).to.deep.equal(BigNumber.from(100));
+
+    //test totalStakes function.
     expect(await stakingContract.totalStakes()).to.deep.equal(BigNumber.from(100));
 
     //remove stake amount of 50.
+    //test removeStake function of Staking contract.
     await stakingContract.connect(addr1).removeStake(50);
 
     expect(await stakingContract.stakeOf(addr1.address)).to.deep.equal(BigNumber.from(50));
