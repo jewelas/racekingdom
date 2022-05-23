@@ -298,7 +298,7 @@ contract RKStaking is Context, Ownable, ReentrancyGuard {
         return stakes;
     }
 
-    function removeStake(uint256 amount) public nonReentrant {
+    function removeStake(uint256 amount) public  {
         require(isStakeholder(msg.sender), "Not a stake holder address");
         require(amount > 0, "Removing zero amount.");
         require(amount <= stakeOf(msg.sender), "Removing Exeeded Amount");
@@ -431,7 +431,7 @@ contract RKStaking is Context, Ownable, ReentrancyGuard {
         return _totalRewards;
     }
 
-    function claimReward() public nonReentrant returns (bool) {
+    function claimReward() public returns (bool) {
         uint256 reward = rewardsOf(msg.sender);
         if (reward > 0) {
             _claimed[msg.sender].count = _claimed[msg.sender].count.add(1);
