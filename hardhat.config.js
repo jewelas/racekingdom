@@ -16,7 +16,7 @@ const { BSC_API_KEY, PRIVATE_KEY} = process.env;
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
-   defaultNetwork: "testnet",
+   defaultNetwork: "hardhat",
    networks: {
       localhost: {
          url: "http://127.0.0.1:8545"

@@ -2,16 +2,16 @@
 // Load dependencies
 const { expect } = require("chai");
 const { BigNumber } = require("ethers");
-const { stakingRewardVestingAmount30, 
-  stakingRewardVestingAmount60, 
-  stakingRewardVestingAmount90, 
-  seedRoundVestingAmount, 
-  privateRoundVestingAmount, 
-  publicRoundVestingAmount, 
-  teamVestingAmount, 
-  advisorsVestingAmount, 
-  p2eVestingAmount, 
-  ecosystemVestingAmount 
+const { stakingRewardVestingAmount30,
+  stakingRewardVestingAmount60,
+  stakingRewardVestingAmount90,
+  seedRoundVestingAmount,
+  privateRoundVestingAmount,
+  publicRoundVestingAmount,
+  teamVestingAmount,
+  advisorsVestingAmount,
+  p2eVestingAmount,
+  ecosystemVestingAmount
 } = require("../scripts/testData");
 
 let RaceKingdom;
@@ -39,27 +39,78 @@ describe("Racekingdom", function () {
     mainContract = await RaceKingdom.deploy();
     await mainContract.deployed();
 
-    // vestingContract = await RKVesting.deploy(mainContract.address);
-    // await vestingContract.deployed();
+    vestingContract = await RKVesting.deploy(mainContract.address);
+    await vestingContract.deployed();
 
-    
 
-    // stakingContract = await RKStaking.deploy(mainContract.address, vestingContract.address)
-    // await stakingContract.deployed()
+
+    stakingContract = await RKStaking.deploy(mainContract.address, vestingContract.address)
+    await stakingContract.deployed()
+
   });
 
   // Test case
-  it("Basic Token Contract deployed correctly.", async function () {
+  it("Basic Token Contract works correctly.", async function () {
     expect((await mainContract.symbol()).toString()).to.equal("RKPO");
 
     const [addr1, addr2] = await ethers.getSigners();
     await mainContract.mint(addr1.address, 50);
-    expect(await mainContract.balanceOf(addr1.address)).to.equal(50);
+    expect(BigNumber.from(await mainContract.balanceOf(addr1.address))).to.deep.equal(BigNumber.from("50"));
+
+    await mainContract.connect(addr1).transfer(addr2.address, 50);
+    expect(BigNumber.from(await mainContract.balanceOf(addr2.address))).to.deep.equal(BigNumber.from("50"));
   });
 
-  // it("Vesting Contract was triggered correctly.", async function () {
-  //   expect(parseInt(await vestingContract.Month())).to.equal(1);
-  //   await vestingContract.SetSeedRoundVestingAmount(toBigNumberArray(seedRoundVestingAmount));
-  //   expect(await vestingContract.SeedRoundVestingAmount()).to.equal(seedRoundVestingAmount);
-  // });
+  it("Vesting and Staking contracts are working correctly.", async function () {
+    //Trigger vesting contract.
+    await vestingContract.Trigger();
+
+    //Get current month
+    expect(parseInt(await vestingContract.Month())).to.equal(1);
+
+    //Set Vesting Amounts.
+    await vestingContract.SetSeedRoundVestingAmount(toBigNumberArray(seedRoundVestingAmount));
+    expect(await vestingContract.SeedRoundVestingAmount()).to.deep.equal(toBigNumberArray(seedRoundVestingAmount));
+
+    await vestingContract.SetPrivateRoundVestingAmount(toBigNumberArray(privateRoundVestingAmount));
+    expect(await vestingContract.PrivateRoundVestingAmount()).to.deep.equal(toBigNumberArray(privateRoundVestingAmount));
+
+    await vestingContract.SetPublicRoundVestingAmount(toBigNumberArray(publicRoundVestingAmount));
+    expect(await vestingContract.PublicRoundVestingAmount()).to.deep.equal(toBigNumberArray(publicRoundVestingAmount));
+
+    await vestingContract.SetTeamVestingAmount(toBigNumberArray(teamVestingAmount));
+    expect(await vestingContract.TeamVestingAmount()).to.deep.equal(toBigNumberArray(teamVestingAmount));
+
+    await vestingContract.SetAdvisorsVestingAmount(toBigNumberArray(advisorsVestingAmount));
+    expect(await vestingContract.AdvisorsVestingAmount()).to.deep.equal(toBigNumberArray(advisorsVestingAmount));
+
+    await vestingContract.SetP2EVestingAmount(toBigNumberArray(p2eVestingAmount));
+    expect(await vestingContract.P2EVestingAmount()).to.deep.equal(toBigNumberArray(p2eVestingAmount));
+
+    await vestingContract.SetStakingVestingAmount(toBigNumberArray(stakingRewardVestingAmount30), toBigNumberArray(stakingRewardVestingAmount60), toBigNumberArray(stakingRewardVestingAmount90));
+
+    await vestingContract.SetEcosystemVestingAmount(toBigNumberArray(ecosystemVestingAmount));
+    expect(await vestingContract.EcosystemVestingAmount()).to.deep.equal(toBigNumberArray(ecosystemVestingAmount));
+
+
+    //Get 90 APY ceiling for Q1.
+    expect(await stakingContract.getAPY(BigNumber.from(await vestingContract.start()), 90)).to.deep.equal(BigNumber.from(12306));
+
+
+    //Stake amount of 100.
+    const [addr1] = await ethers.getSigners();
+    await mainContract.mint(addr1.address, 100);
+    await mainContract.connect(addr1).approve(stakingContract.address, 100);
+    await stakingContract.connect(addr1).createStake(100, 90);
+
+    expect(await stakingContract.isStakeholder(addr1.address)).to.deep.equal(true);
+    expect(await stakingContract.stakeOf(addr1.address)).to.deep.equal(BigNumber.from(100));
+    expect(await stakingContract.totalStakes()).to.deep.equal(BigNumber.from(100));
+
+    //remove stake amount of 50.
+    await stakingContract.connect(addr1).removeStake(50);
+
+    expect(await stakingContract.stakeOf(addr1.address)).to.deep.equal(BigNumber.from(50));
+    expect(await stakingContract.totalStakes()).to.deep.equal(BigNumber.from(50));
+  });
 });
