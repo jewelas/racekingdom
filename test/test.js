@@ -133,7 +133,7 @@ describe("Racekingdom", function () {
     expect(await stakingContract.totalStakes()).to.deep.equal(BigNumber.from(100));
 
     //remove stake amount of 50.
-    //test removeStake function of Staking contract.
+    //test removeStake, removeStakeholder function of Staking contract.
     await stakingContract.connect(addr1).removeStake(50);
 
     expect(await stakingContract.stakeOf(addr1.address)).to.deep.equal(BigNumber.from(50));
