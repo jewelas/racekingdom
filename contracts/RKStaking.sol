@@ -4,10 +4,11 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./IRaceKingdom.sol";
 import "./IRKVesting.sol";
 
-contract RKStaking is Context, Ownable {
+contract RKStaking is Context, Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     uint256 private constant daySeconds = 1;
     // uint256 private constant daySeconds = 86400;
@@ -273,7 +274,7 @@ contract RKStaking is Context, Ownable {
         }
     }
 
-    function createStake(uint256 amount, uint256 lock) public returns (bool) {
+    function createStake(uint256 amount, uint256 lock) public nonReentrant returns (bool) {
         require(
             _racekingdom.transferFrom(msg.sender, address(this), amount),
             "transfer Failed!"
@@ -297,7 +298,7 @@ contract RKStaking is Context, Ownable {
         return stakes;
     }
 
-    function removeStake(uint256 amount) public {
+    function removeStake(uint256 amount) public nonReentrant {
         require(isStakeholder(msg.sender), "Not a stake holder address");
         require(amount > 0, "Removing zero amount.");
         require(amount <= stakeOf(msg.sender), "Removing Exeeded Amount");
@@ -430,7 +431,7 @@ contract RKStaking is Context, Ownable {
         return _totalRewards;
     }
 
-    function claimReward() public returns (bool) {
+    function claimReward() public nonReentrant returns (bool) {
         uint256 reward = rewardsOf(msg.sender);
         if (reward > 0) {
             _claimed[msg.sender].count = _claimed[msg.sender].count.add(1);
@@ -443,11 +444,11 @@ contract RKStaking is Context, Ownable {
         } else return false;
     }
 
-    function claim() public {
+    function claim() public nonReentrant {
         removeStake(removableStake(msg.sender));
     }
 
-    function withdrawClaimed() public returns (bool) {
+    function withdrawClaimed() public nonReentrant returns (bool) {
         uint256 withdrawable;
         for (uint256 i = _claimed[msg.sender].count; i >= 1; i--) {
             if (block.timestamp.sub(_claimed[msg.sender].time[i]) >= daySeconds.mul(3)) {

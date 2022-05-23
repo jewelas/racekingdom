@@ -4,12 +4,13 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./IBEP20.sol";
 
 
 
 
-contract RaceKingdom is Context, IBEP20, Ownable {
+contract RaceKingdom is Context, IBEP20, Ownable, ReentrancyGuard {
   using SafeMath for uint256;
 
   uint256 public constant MAX_SUPPLY = 3700000000000000000000000000;
@@ -83,7 +84,7 @@ contract RaceKingdom is Context, IBEP20, Ownable {
    * - `recipient` cannot be the zero address.
    * - the caller must have a balance of at least `amount`.
    */
-  function transfer(address recipient, uint256 amount) external override returns (bool) {
+  function transfer(address recipient, uint256 amount) external override nonReentrant returns (bool) {
     _transfer(_msgSender(), recipient, amount);
     return true;
   }
@@ -102,7 +103,7 @@ contract RaceKingdom is Context, IBEP20, Ownable {
    *
    * - `spender` cannot be the zero address.
    */
-  function approve(address spender, uint256 amount) external override returns (bool) {
+  function approve(address spender, uint256 amount) external override nonReentrant returns (bool) {
     _approve(_msgSender(), spender, amount);
     return true;
   }
@@ -119,7 +120,7 @@ contract RaceKingdom is Context, IBEP20, Ownable {
    * - the caller must have allowance for `sender`'s tokens of at least
    * `amount`.
    */
-  function transferFrom(address sender, address recipient, uint256 amount) external override returns (bool) {
+  function transferFrom(address sender, address recipient, uint256 amount) external override nonReentrant returns (bool) {
     _approve(sender, _msgSender(), _allowances[sender][_msgSender()].sub(amount, "BEP20: transfer amount exceeds allowance"));
     _transfer(sender, recipient, amount);
     return true;
@@ -137,7 +138,7 @@ contract RaceKingdom is Context, IBEP20, Ownable {
    *
    * - `spender` cannot be the zero address.
    */
-  function increaseAllowance(address spender, uint256 addedValue) public returns (bool) {
+  function increaseAllowance(address spender, uint256 addedValue) public nonReentrant returns (bool) {
     _approve(_msgSender(), spender, _allowances[_msgSender()][spender].add(addedValue));
     return true;
   }
@@ -156,7 +157,7 @@ contract RaceKingdom is Context, IBEP20, Ownable {
    * - `spender` must have allowance for the caller of at least
    * `subtractedValue`.
    */
-  function decreaseAllowance(address spender, uint256 subtractedValue) public returns (bool) {
+  function decreaseAllowance(address spender, uint256 subtractedValue) public nonReentrant returns (bool) {
     _approve(_msgSender(), spender, _allowances[_msgSender()][spender].sub(subtractedValue, "BEP20: decreased allowance below zero"));
     return true;
   }
@@ -169,7 +170,7 @@ contract RaceKingdom is Context, IBEP20, Ownable {
    *
    * - `msg.sender` must be the token owner
    */
-  function mint(address account, uint256 amount) public onlyOwner returns (bool) {
+  function mint(address account, uint256 amount) public onlyOwner nonReentrant returns (bool) {
     _mint(account, amount);
     return true;
   }
