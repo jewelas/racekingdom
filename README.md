@@ -8,7 +8,25 @@ Install node modules.
 npm i
 ```
 
+## Test on local network.
+
+Convert **daySeconds** as **1**
+
+```bash
+uint256 private constant daySeconds = 1;
+```
+
+```bash
+npx hardhat test
+```
+
 ## Deploy to test net.
+
+Convert **daySeconds** as **86400**
+
+```bash
+uint256 private constant daySeconds = 86400;
+```
 
 ```bash
 npx hardhat run scripts/deploy.js --network testnet
@@ -16,12 +34,13 @@ npx hardhat run scripts/deploy.js --network testnet
 
 ## Deploy to main net.
 
+Convert **daySeconds** as **86400**
+
+```bash
+uint256 private constant daySeconds = 86400;
+```
+
 ```bash
 npx hardhat run scripts/deploy.js --network mainnet
 ```
 
-## Test on local network.
-
-```bash
-npx hardhat test
-```
