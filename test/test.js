@@ -53,7 +53,7 @@ describe("Racekingdom", function () {
 
   // Test case
   it("Basic Token Contract works correctly.", async function () {
-    expect((await mainContract.symbol()).toString()).to.equal("RKPO");
+    expect((await mainContract.symbol()).toString()).to.equal("ATOZ");
 
     const [addr1, addr2] = await ethers.getSigners();
 

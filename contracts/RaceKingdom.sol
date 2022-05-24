@@ -26,7 +26,7 @@ contract RaceKingdom is Context, IBEP20, Ownable, ReentrancyGuard {
 
   constructor() {
     _name = "Race Kingdom";
-    _symbol = "RKPO";
+    _symbol = "ATOZ";
     _decimals = 18;
     _totalSupply = 0;
     _balances[msg.sender] = _totalSupply;
