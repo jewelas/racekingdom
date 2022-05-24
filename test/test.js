@@ -113,7 +113,7 @@ describe("Racekingdom", function () {
 
 
     //Stake amount of 1000000000000000000.
-    const [addr1] = await ethers.getSigners();
+    const [addr1, addr2] = await ethers.getSigners();
 
     //test mint function of token contract.
     await mainContract.mint(addr1.address, BigNumber.from("1000000000000000000"));
@@ -126,7 +126,7 @@ describe("Racekingdom", function () {
     //createStake, addStakeholder.
     await stakingContract.connect(addr1).createStake(BigNumber.from("1000000000000000000"), 30);
 
-    //test isStakeholder function.
+    //test isStakeholder, addStakeholder function.
     expect(await stakingContract.isStakeholder(addr1.address)).to.deep.equal(true);
 
     //test stakeOf function.
@@ -134,26 +134,38 @@ describe("Racekingdom", function () {
 
     //test totalStakes function.
     expect(await stakingContract.totalStakes()).to.deep.equal(BigNumber.from("1000000000000000000"));
+    
+    expect(await stakingContract.removableStake(addr1.address)).to.deep.equal(BigNumber.from("0"));
+    expect(BigNumber.from(await mainContract.balanceOf(addr1.address))).to.deep.equal(BigNumber.from("0"));
 
     await delay(35000);
 
-    // //rewardsOf
-    // expect(await stakingContract.rewardsOf(addr1.address)).to.deep.equal(BigNumber.from("94300000000000000"));
+    //mint
+    await mainContract.mint(addr2.address, BigNumber.from("1000000000000000000"));
 
-    // //totalRewards.  
-    // expect(await stakingContract.connect(addr1).totalRewards()).to.deep.equal(BigNumber.from("94300000000000000"));
+    //rewardsOf
+    expect(await stakingContract.rewardsOf(addr1.address)).to.deep.equal(BigNumber.from("94300000000000000"));
 
-    // //remove stake amount of 500000000000000000.
+    //removableStake
+    expect(await stakingContract.removableStake(addr1.address)).to.deep.equal(BigNumber.from("1000000000000000000"));
+    
+    //totalRewards.  
+    expect(await stakingContract.connect(addr1).totalRewards()).to.deep.equal(BigNumber.from("94300000000000000"));
+    
+    //remove stake amount of 500000000000000000.
     //test claim, removeStake, removeStakeholder, claimReward, removableStake  function of Staking contract.
     await stakingContract.connect(addr1).claim();
     await delay(2000);
+
+    //removeStakeholder, isStakeholder
+    expect(await stakingContract.isStakeholder(addr1.address)).to.deep.equal(false);
+
 
     //withdrawClaimed
     await stakingContract.connect(addr1).withdrawClaimed();
     expect(BigNumber.from(await mainContract.balanceOf(addr1.address))).to.deep.equal(BigNumber.from("1094300000000000000"));
 
 
-    // expect(await stakingContract.stakeOf(addr1.address)).to.deep.equal(BigNumber.from("0"));
-    // expect(await stakingContract.totalStakes()).to.deep.equal(BigNumber.from("0"));
+    expect(await stakingContract.totalStakes()).to.deep.equal(BigNumber.from("0"));
   });
 });

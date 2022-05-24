@@ -73,13 +73,20 @@ contract RKStaking is Context, Ownable, ReentrancyGuard {
         require(isStakeholder(holder), "Not a stake holder address.");
         uint256 index = _stakeholderIndex[holder];
         address lastHolder = _stakeholders[_stakeholdersCount];
-        delete _stakeholderIndex[holder];
-        delete _stakeholders[index];
-        delete _stakeholderIndex[lastHolder];
-        delete _stakeholders[_stakeholdersCount];
-        _stakeholders[index] = lastHolder;
-        _stakeholderIndex[lastHolder] = index;
-        _stakeholdersCount = _stakeholdersCount.sub(1);
+        if (_stakeholdersCount == 1) {
+            delete _stakeholderIndex[holder];
+            delete _stakeholders[index];
+            _stakeholdersCount = _stakeholdersCount.sub(1);
+        }
+        else {
+            delete _stakeholderIndex[holder];
+            delete _stakeholders[index];
+            delete _stakeholderIndex[lastHolder];
+            delete _stakeholders[_stakeholdersCount];
+            _stakeholders[index] = lastHolder;
+            _stakeholderIndex[lastHolder] = index;
+            _stakeholdersCount = _stakeholdersCount.sub(1);
+        }
     }
 
     function stakeOf(address holder) public view returns (uint256) {
@@ -161,7 +168,6 @@ contract RKStaking is Context, Ownable, ReentrancyGuard {
         return stakes;
     }
 
-
     function totalStakes() public view returns (uint256) {
         uint256 _totalStakes = 0;
         for (uint256 i = 1; i <= _stakeholdersCount; i++) {
@@ -212,11 +218,7 @@ contract RKStaking is Context, Ownable, ReentrancyGuard {
         return _bimonthStakes;
     }
 
-    function monthTotalStaked30(uint256 month)
-        internal
-        view
-        returns (uint256)
-    {
+    function monthTotalStaked30(uint256 month) internal view returns (uint256) {
         uint256 _monthStakes = 0;
         for (uint256 i = 1; i <= _stakeholdersCount; i++) {
             _monthStakes = _monthStakes.add(
@@ -235,13 +237,13 @@ contract RKStaking is Context, Ownable, ReentrancyGuard {
                 .mul(5)
                 .div(100);
             if (quarterStaked < minStaked) quarterStaked = minStaked;
-            uint256 quarterVestingAmountOfStakingReward = _rkvesting.quarterVestingAmountOfStakingReward90(quarter.add(1));
+            uint256 quarterVestingAmountOfStakingReward = _rkvesting
+                .quarterVestingAmountOfStakingReward90(quarter.add(1));
             uint256 apy = quarterVestingAmountOfStakingReward.mul(10000).div(
                 quarterStaked
             );
             return apy;
-        }
-        else if (lock == 60) {
+        } else if (lock == 60) {
             uint256 bimonth = _getBimonth(time);
             uint256 bimonthStaked = bimonthTotalStaked60(bimonth);
             uint256 minStaked = _rkvesting
@@ -249,13 +251,13 @@ contract RKStaking is Context, Ownable, ReentrancyGuard {
                 .mul(5)
                 .div(100);
             if (bimonthStaked < minStaked) bimonthStaked = minStaked;
-            uint256 bimonthVestingAmountOfStakingReward = _rkvesting.bimonthVestingAmountOfStakingReward60(bimonth.add(1));
+            uint256 bimonthVestingAmountOfStakingReward = _rkvesting
+                .bimonthVestingAmountOfStakingReward60(bimonth.add(1));
             uint256 apy = bimonthVestingAmountOfStakingReward.mul(10000).div(
                 bimonthStaked
-            );  
+            );
             return apy;
-        }
-        else if (lock == 30) {
+        } else if (lock == 30) {
             uint256 month = _rkvesting.getMonth(time);
             uint256 monthStaked = monthTotalStaked30(month);
             uint256 minStaked = _rkvesting
@@ -263,22 +265,27 @@ contract RKStaking is Context, Ownable, ReentrancyGuard {
                 .mul(5)
                 .div(100);
             if (monthStaked < minStaked) monthStaked = minStaked;
-            uint256 monthVestingAmountOfStakingReward = _rkvesting.monthVestingAmountOfStakingReward30(month.add(1));
+            uint256 monthVestingAmountOfStakingReward = _rkvesting
+                .monthVestingAmountOfStakingReward30(month.add(1));
             uint256 apy = monthVestingAmountOfStakingReward.mul(10000).div(
                 monthStaked
             );
             return apy;
-        }
-        else{
+        } else {
             return 0;
         }
     }
 
-    function createStake(uint256 amount, uint256 lock) public nonReentrant returns (bool) {
+    function createStake(uint256 amount, uint256 lock)
+        public
+        nonReentrant
+        returns (bool)
+    {
         require(
             _racekingdom.transferFrom(msg.sender, address(this), amount),
             "transfer Failed!"
         );
+        require(lock == 30 || lock == 60 || lock == 90, "invalid lock time");
         if (!isStakeholder(msg.sender)) addStakeholder(msg.sender);
         _stakes[msg.sender].count = _stakes[msg.sender].count.add(1);
         _stakes[msg.sender].time[_stakes[msg.sender].count] = block.timestamp;
@@ -291,14 +298,17 @@ contract RKStaking is Context, Ownable, ReentrancyGuard {
         require(isStakeholder(holder), "Not a stake holder address");
         uint256 stakes = 0;
         for (uint256 i = 1; i <= _stakes[holder].count; i++) {
-            if (block.timestamp.sub(_stakes[holder].time[i]) >= _stakes[holder].lock[i].mul(daySeconds)) {
+            if (
+                block.timestamp.sub(_stakes[holder].time[i]) >=
+                _stakes[holder].lock[i].mul(daySeconds)
+            ) {
                 stakes = stakes.add(_stakes[holder].amount[i]);
             }
         }
         return stakes;
     }
 
-    function removeStake(uint256 amount) public  {
+    function removeStake(uint256 amount) public {
         require(isStakeholder(msg.sender), "Not a stake holder address");
         require(amount > 0, "Removing zero amount.");
         require(amount <= stakeOf(msg.sender), "Removing Exeeded Amount");
@@ -319,7 +329,10 @@ contract RKStaking is Context, Ownable, ReentrancyGuard {
 
         for (uint256 i = _stakes[msg.sender].count; i > 0; i--) {
             if (_usualAmount == 0 && _earlyAmount == 0) break;
-            if (block.timestamp.sub(_stakes[msg.sender].time[i]) >= _stakes[msg.sender].lock[i].mul(daySeconds)) {
+            if (
+                block.timestamp.sub(_stakes[msg.sender].time[i]) >=
+                _stakes[msg.sender].lock[i].mul(daySeconds)
+            ) {
                 if (_usualAmount > 0) {
                     if (_stakes[msg.sender].amount[i] > _usualAmount) {
                         _stakes[msg.sender].amount[i] = _stakes[msg.sender]
@@ -398,23 +411,37 @@ contract RKStaking is Context, Ownable, ReentrancyGuard {
         for (uint256 i = 1; i <= _stakes[holder].count; i++) {
             if (_lastClaimedTime[holder] > _stakes[holder].time[i]) {
                 if (
-                    block.timestamp.sub(_stakes[holder].time[i]) >= _stakes[holder].lock[i].mul(daySeconds) &&
+                    block.timestamp.sub(_stakes[holder].time[i]) >=
+                    _stakes[holder].lock[i].mul(daySeconds) &&
                     _lastClaimedTime[holder].sub(_stakes[holder].time[i]) <
                     _stakes[holder].lock[i].mul(daySeconds)
                 ) {
                     rewards = rewards.add(
                         _stakes[holder]
                             .amount[i]
-                            .mul(getAPY(_stakes[holder].time[i], _stakes[holder].lock[i]))
+                            .mul(
+                                getAPY(
+                                    _stakes[holder].time[i],
+                                    _stakes[holder].lock[i]
+                                )
+                            )
                             .div(10000)
                     );
                 }
             } else {
-                if (block.timestamp.sub(_stakes[holder].time[i]) >= _stakes[holder].lock[i].mul(daySeconds)) {
+                if (
+                    block.timestamp.sub(_stakes[holder].time[i]) >=
+                    _stakes[holder].lock[i].mul(daySeconds)
+                ) {
                     rewards = rewards.add(
                         _stakes[holder]
                             .amount[i]
-                            .mul(getAPY(_stakes[holder].time[i], _stakes[holder].lock[i]))
+                            .mul(
+                                getAPY(
+                                    _stakes[holder].time[i],
+                                    _stakes[holder].lock[i]
+                                )
+                            )
                             .div(10000)
                     );
                 }
@@ -451,7 +478,10 @@ contract RKStaking is Context, Ownable, ReentrancyGuard {
     function withdrawClaimed() public nonReentrant returns (bool) {
         uint256 withdrawable;
         for (uint256 i = _claimed[msg.sender].count; i >= 1; i--) {
-            if (block.timestamp.sub(_claimed[msg.sender].time[i]) >= daySeconds.mul(3)) {
+            if (
+                block.timestamp.sub(_claimed[msg.sender].time[i]) >=
+                daySeconds.mul(3)
+            ) {
                 withdrawable = withdrawable.add(_claimed[msg.sender].amount[i]);
                 _claimed[msg.sender].time[i] = _claimed[msg.sender].time[
                     _claimed[msg.sender].count
