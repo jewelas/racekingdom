@@ -22,25 +22,29 @@ npx hardhat test
 
 ## Deploy to test net.
 
-Convert **daySeconds** as **86400**
+Convert **daySeconds** as **86400** in RKStaking.sol
 
 ```bash
 uint256 private constant daySeconds = 86400;
 ```
 
+run deployment script.
+
 ```bash
-npx hardhat run scripts/deploy.js --network testnet
+npm run deployTestnet
 ```
 
 ## Deploy to main net.
 
-Convert **daySeconds** as **86400**
+Convert **daySeconds** as **86400** in RKSTaking.sol
 
 ```bash
 uint256 private constant daySeconds = 86400;
 ```
 
+run deployment script.
+
 ```bash
-npx hardhat run scripts/deploy.js --network mainnet
+npm run deployMainnet
 ```
 
