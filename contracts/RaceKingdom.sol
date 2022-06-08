@@ -1,17 +1,16 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.11;
+pragma solidity 0.8.14;
 
 import "@openzeppelin/contracts/utils/Context.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "./IBEP20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
 
 
-contract RaceKingdom is Context, IBEP20, Ownable, ReentrancyGuard {
-  using SafeMath for uint256;
+
+contract RaceKingdom is Context, IERC20, Ownable, ReentrancyGuard {
 
   uint256 public constant MAX_SUPPLY = 3700000000000000000000000000;
 
@@ -37,28 +36,28 @@ contract RaceKingdom is Context, IBEP20, Ownable, ReentrancyGuard {
   /**
    * @dev Returns the bep token owner.
    */
-  function getOwner() external view override returns (address) {
+  function getOwner() external view returns (address) {
     return owner();
   }
 
   /**
    * @dev Returns the token decimals.
    */
-  function decimals() external view override returns (uint8) {
+  function decimals() external view returns (uint8) {
     return _decimals;
   }
 
   /**
    * @dev Returns the token symbol.
    */
-  function symbol() external view override returns (string memory) {
+  function symbol() external view returns (string memory) {
     return _symbol;
   }
 
   /**
   * @dev Returns the token name.
   */
-  function name() external view override returns (string memory) {
+  function name() external view returns (string memory) {
     return _name;
   }
 
@@ -121,7 +120,7 @@ contract RaceKingdom is Context, IBEP20, Ownable, ReentrancyGuard {
    * `amount`.
    */
   function transferFrom(address sender, address recipient, uint256 amount) external override nonReentrant returns (bool) {
-    _approve(sender, _msgSender(), _allowances[sender][_msgSender()].sub(amount, "BEP20: transfer amount exceeds allowance"));
+    _approve(sender, _msgSender(), _allowances[sender][_msgSender()] - amount);
     _transfer(sender, recipient, amount);
     return true;
   }
@@ -139,7 +138,7 @@ contract RaceKingdom is Context, IBEP20, Ownable, ReentrancyGuard {
    * - `spender` cannot be the zero address.
    */
   function increaseAllowance(address spender, uint256 addedValue) public nonReentrant returns (bool) {
-    _approve(_msgSender(), spender, _allowances[_msgSender()][spender].add(addedValue));
+    _approve(_msgSender(), spender, _allowances[_msgSender()][spender] + addedValue);
     return true;
   }
 
@@ -158,7 +157,7 @@ contract RaceKingdom is Context, IBEP20, Ownable, ReentrancyGuard {
    * `subtractedValue`.
    */
   function decreaseAllowance(address spender, uint256 subtractedValue) public nonReentrant returns (bool) {
-    _approve(_msgSender(), spender, _allowances[_msgSender()][spender].sub(subtractedValue, "BEP20: decreased allowance below zero"));
+    _approve(_msgSender(), spender, _allowances[_msgSender()][spender] - subtractedValue);
     return true;
   }
 
@@ -193,8 +192,8 @@ contract RaceKingdom is Context, IBEP20, Ownable, ReentrancyGuard {
     require(sender != address(0), "BEP20: transfer from the zero address");
     require(recipient != address(0), "BEP20: transfer to the zero address");
 
-    _balances[sender] = _balances[sender].sub(amount, "BEP20: transfer amount exceeds balance");
-    _balances[recipient] = _balances[recipient].add(amount);
+    _balances[sender] = _balances[sender] - amount;
+    _balances[recipient] = _balances[recipient] + amount;
     emit Transfer(sender, recipient, amount);
   }
 
@@ -209,10 +208,10 @@ contract RaceKingdom is Context, IBEP20, Ownable, ReentrancyGuard {
    */
   function _mint(address account, uint256 amount) internal {
     require(account != address(0), "BEP20: mint to the zero address");
-    require(_totalSupply.add(amount) <= MAX_SUPPLY, "This mint would exceed max supply of ATOZs");
+    require(_totalSupply + amount <= MAX_SUPPLY, "This mint would exceed max supply of ATOZs");
 
-    _totalSupply = _totalSupply.add(amount);
-    _balances[account] = _balances[account].add(amount);
+    _totalSupply = _totalSupply + amount;
+    _balances[account] = _balances[account] + amount;
     emit Transfer(address(0), account, amount);
   }
 
@@ -230,8 +229,8 @@ contract RaceKingdom is Context, IBEP20, Ownable, ReentrancyGuard {
   function _burn(address account, uint256 amount) internal {
     require(account != address(0), "BEP20: burn from the zero address");
 
-    _balances[account] = _balances[account].sub(amount, "BEP20: burn amount exceeds balance");
-    _totalSupply = _totalSupply.sub(amount);
+    _balances[account] = _balances[account] - amount;
+    _totalSupply = _totalSupply - amount;
     emit Transfer(account, address(0), amount);
   }
 
@@ -264,6 +263,6 @@ contract RaceKingdom is Context, IBEP20, Ownable, ReentrancyGuard {
    */
   function _burnFrom(address account, uint256 amount) internal {
     _burn(account, amount);
-    _approve(account, _msgSender(), _allowances[account][_msgSender()].sub(amount, "BEP20: burn amount exceeds allowance"));
+    _approve(account, _msgSender(), _allowances[account][_msgSender()] - amount);
   }
 }
