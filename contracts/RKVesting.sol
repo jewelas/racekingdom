@@ -1,335 +1,347 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+// contracts/TokenVesting.sol
+// SPDX-License-Identifier: Apache-2.0
+pragma solidity 0.8.11;
 
-import "@openzeppelin/contracts/utils/Context.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./IRaceKingdom.sol";
-
-contract RKVesting is Context, Ownable {
-    using SafeMath for uint256;
-
-    event Released(uint256 fundId, uint256 amount);
-
-    mapping(uint256 => uint256[]) private _vestingAmount;
-    mapping(uint256 => address) private _beneficiary;
-    mapping(uint256 => uint256) private released;
-    mapping(uint256 => uint256) private allocation;
-
-    uint256 private constant _seedRound = 1;
-    uint256 private constant _privateRound = 2;
-    uint256 private constant _publicRound = 3;
-    uint256 private constant _team = 4;
-    uint256 private constant _advisors = 5;
-    uint256 private constant _p2e = 6;
-    uint256 private constant _staking = 7;
-    uint256 private constant _ecosystem = 8;
-    uint256 private constant _staking30 = 9;
-    uint256 private constant _staking60 = 10;
-    uint256 private constant _staking90 = 11;
-
-    bool private _isTriggered;
-
-    uint256 private _start;
-
-    IRaceKingdom _racekingdom;
-
-
-    constructor (address RaceKingdomAddr) {
-        _racekingdom = IRaceKingdom(RaceKingdomAddr);
-        _isTriggered = false;
-        allocation[_seedRound] = 296000000;
-        allocation[_privateRound] = 444000000;
-        allocation[_publicRound] = 148000000;
-        allocation[_team] = 555000000;
-        allocation[_advisors] = 185000000;
-        allocation[_p2e] = 1110000000;
-        allocation[_staking] = 555000000;
-        allocation[_ecosystem] = 407000000;
+/**
+ * @title TokenVesting
+ */
+contract RKVesting is Ownable, ReentrancyGuard{
+    using SafeERC20 for IERC20;
+    struct VestingSchedule{
+        bool initialized;
+        // beneficiary of tokens after they are released
+        address  beneficiary;
+        // cliff period in seconds
+        uint256  cliff;
+        // start time of the vesting period
+        uint256  start;
+        // duration of the vesting period in seconds
+        uint256  duration;
+        // duration of a slice period for the vesting in seconds
+        uint256 slicePeriodSeconds;
+        // whether or not the vesting is revocable
+        bool  revocable;
+        // total amount of tokens to be released at the end of the vesting
+        uint256 amountTotal;
+        // amount of tokens released
+        uint256  released;
+        // whether or not the vesting has been revoked
+        bool revoked;
     }
 
-    function start () external view returns (uint256) {
-        return (_start);
+    // address of the ERC20 token
+    IERC20 immutable private _token;
+
+    bytes32[] private vestingSchedulesIds;
+    mapping(bytes32 => VestingSchedule) private vestingSchedules;
+    uint256 private vestingSchedulesTotalAmount;
+    mapping(address => uint256) private holdersVestingCount;
+
+    event Released(uint256 amount);
+    event Revoked();
+
+    /**
+    * @dev Reverts if no vesting schedule matches the passed identifier.
+    */
+    modifier onlyIfVestingScheduleExists(bytes32 vestingScheduleId) {
+        require(vestingSchedules[vestingScheduleId].initialized == true);
+        _;
     }
 
-    function SeedRoundVestingAmount () external view returns (uint256[] memory) {
-        return(_vestingAmount[_seedRound]);
+    /**
+    * @dev Reverts if the vesting schedule does not exist or has been revoked.
+    */
+    modifier onlyIfVestingScheduleNotRevoked(bytes32 vestingScheduleId) {
+        require(vestingSchedules[vestingScheduleId].initialized == true);
+        require(vestingSchedules[vestingScheduleId].revoked == false);
+        _;
     }
 
-    function seedRoundBeneficiary() public view returns (address) {
-        return _beneficiary[_seedRound];
+    /**
+     * @dev Creates a vesting contract.
+     * @param token_ address of the ERC20 token contract
+     */
+    constructor(address token_) {
+        require(token_ != address(0x0));
+        _token = IERC20(token_);
     }
 
-    function SetSeedRoundVestingAmount (uint256[] memory vestingAmount) public onlyOwner returns (bool) {
-        _vestingAmount[_seedRound] = vestingAmount;
-        return true;
+    receive() external payable {}
+
+    fallback() external payable {}
+
+    /**
+    * @dev Returns the number of vesting schedules associated to a beneficiary.
+    * @return the number of vesting schedules
+    */
+    function getVestingSchedulesCountByBeneficiary(address _beneficiary)
+    external
+    view
+    returns(uint256){
+        return holdersVestingCount[_beneficiary];
     }
 
-    function setSeedRoundBeneficiary (address beneficiary) public onlyOwner returns (bool) {
-        _beneficiary[_seedRound] = beneficiary;
-        return true;
+    /**
+    * @dev Returns the vesting schedule id at the given index.
+    * @return the vesting id
+    */
+    function getVestingIdAtIndex(uint256 index)
+    external
+    view
+    returns(bytes32){
+        require(index < getVestingSchedulesCount(), "TokenVesting: index out of bounds");
+        return vestingSchedulesIds[index];
     }
 
-    function PrivateRoundVestingAmount () external view returns ( uint256[] memory) {
-        return( _vestingAmount[_privateRound]);
+    /**
+    * @notice Returns the vesting schedule information for a given holder and index.
+    * @return the vesting schedule structure information
+    */
+    function getVestingScheduleByAddressAndIndex(address holder, uint256 index)
+    external
+    view
+    returns(VestingSchedule memory){
+        return getVestingSchedule(computeVestingScheduleIdForAddressAndIndex(holder, index));
     }
 
-    function privateRoundBeneficiary() public view returns (address) {
-        return _beneficiary[_privateRound];
+
+    /**
+    * @notice Returns the total amount of vesting schedules.
+    * @return the total amount of vesting schedules
+    */
+    function getVestingSchedulesTotalAmount()
+    external
+    view
+    returns(uint256){
+        return vestingSchedulesTotalAmount;
     }
 
-    function SetPrivateRoundVestingAmount (uint256[] memory vestingAmount) public onlyOwner returns (bool) {
-        _vestingAmount[_privateRound] = vestingAmount;
-        return true;
+    /**
+    * @dev Returns the address of the ERC20 token managed by the vesting contract.
+    */
+    function getToken()
+    external
+    view
+    returns(address){
+        return address(_token);
     }
 
-    function setPrivateRoundBeneficiary (address beneficiary) public onlyOwner returns (bool) {
-        _beneficiary[_privateRound] = beneficiary;
-        return true;
+    /**
+    * @notice Creates a new vesting schedule for a beneficiary.
+    * @param _beneficiary address of the beneficiary to whom vested tokens are transferred
+    * @param _start start time of the vesting period
+    * @param _cliff duration in seconds of the cliff in which tokens will begin to vest
+    * @param _duration duration in seconds of the period in which the tokens will vest
+    * @param _slicePeriodSeconds duration of a slice period for the vesting in seconds
+    * @param _revocable whether the vesting is revocable or not
+    * @param _amount total amount of tokens to be released at the end of the vesting
+    */
+    function createVestingSchedule(
+        address _beneficiary,
+        uint256 _start,
+        uint256 _cliff,
+        uint256 _duration,
+        uint256 _slicePeriodSeconds,
+        bool _revocable,
+        uint256 _amount
+    )
+        public
+        onlyOwner{
+        require(
+            this.getWithdrawableAmount() >= _amount,
+            "TokenVesting: cannot create vesting schedule because not sufficient tokens"
+        );
+        require(_duration > 0, "TokenVesting: duration must be > 0");
+        require(_amount > 0, "TokenVesting: amount must be > 0");
+        require(_slicePeriodSeconds >= 1, "TokenVesting: slicePeriodSeconds must be >= 1");
+        bytes32 vestingScheduleId = this.computeNextVestingScheduleIdForHolder(_beneficiary);
+        uint256 cliff = _start + _cliff;
+        vestingSchedules[vestingScheduleId] = VestingSchedule(
+            true,
+            _beneficiary,
+            cliff,
+            _start,
+            _duration,
+            _slicePeriodSeconds,
+            _revocable,
+            _amount,
+            0,
+            false
+        );
+        vestingSchedulesTotalAmount = vestingSchedulesTotalAmount + _amount;
+        vestingSchedulesIds.push(vestingScheduleId);
+        uint256 currentVestingCount = holdersVestingCount[_beneficiary];
+        holdersVestingCount[_beneficiary] = currentVestingCount + 1;
     }
 
-    function PublicRoundVestingAmount () external view returns (uint256[] memory) {
-        return(_vestingAmount[_publicRound]);
-    }
-
-    function publicRoundBeneficiary() public view returns (address) {
-        return _beneficiary[_publicRound];
-    }
-
-    function SetPublicRoundVestingAmount (uint256[] memory vestingAmount) public onlyOwner returns (bool) {
-        _vestingAmount[_publicRound] = vestingAmount;
-        return true;
-    }
-
-    function setPublicRoundBeneficiary (address beneficiary) public onlyOwner returns (bool) {
-        _beneficiary[_publicRound] = beneficiary;
-        return true;
-    }
-
-    function TeamVestingAmount () external view returns (uint256[] memory) {
-        return(_vestingAmount[_team]);
-    }
-
-    function teamBeneficiary() public view returns (address) {
-        return _beneficiary[_team];
-    }
-
-    function SetTeamVestingAmount (uint256[] memory vestingAmount) public onlyOwner returns (bool) {
-        _vestingAmount[_team] = vestingAmount;
-        return true;
-    }
-
-    function setTeamBeneficiary (address beneficiary) public onlyOwner returns (bool) {
-        _beneficiary[_team] = beneficiary;
-        return true;
-    }
-
-    function AdvisorsVestingAmount () external view returns (uint256[] memory) {
-        return(_vestingAmount[_advisors]);
-    }
-
-    function advisorsBeneficiary() public view returns (address) {
-        return _beneficiary[_advisors];
-    }
-
-    function SetAdvisorsVestingAmount (uint256[] memory vestingAmount) public onlyOwner returns (bool) {
-        _vestingAmount[_advisors] = vestingAmount;
-        return true;
-    }
-
-    function setAdvisorsBeneficiary (address beneficiary) public onlyOwner returns (bool) {
-        _beneficiary[_advisors] = beneficiary;
-        return true;
-    }
-
-    function P2EVestingAmount () external view returns (uint256[] memory) {
-        return(_vestingAmount[_p2e]);
-    }
-
-    function p2eBeneficiary() public view returns (address) {
-        return _beneficiary[_p2e];
-    }
-
-    function SetP2EVestingAmount (uint256[] memory vestingAmount) public onlyOwner returns (bool) {
-        _vestingAmount[_p2e] = vestingAmount;
-        return true;
-    }
-
-    function setP2EBeneficiary (address beneficiary) public onlyOwner returns (bool) {
-        _beneficiary[_p2e] = beneficiary;
-        return true;
-    }
-
-    function StakingVestingAmount () external view returns (uint256[] memory, uint256[] memory, uint256[] memory, uint256[] memory) {
-        return(_vestingAmount[_staking30], _vestingAmount[_staking60], _vestingAmount[_staking90], _vestingAmount[_staking]);
-    }
-
-    function stakingBeneficiary() public view returns (address) {
-        return _beneficiary[_staking];
-    }
-
-    function SetStakingVestingAmount (uint256[] memory vestingAmount30, uint256[] memory vestingAmount60, uint256[] memory vestingAmount90) public onlyOwner returns (bool) {
-        _vestingAmount[_staking30] = vestingAmount30;
-        _vestingAmount[_staking60] = vestingAmount60;
-        _vestingAmount[_staking90] = vestingAmount90;
-        for (uint256 i = 0; i < vestingAmount90.length; i++) {
-            _vestingAmount[_staking].push(vestingAmount30[i].add(vestingAmount60[i]).add(vestingAmount90[i]));
+    /**
+    * @notice Revokes the vesting schedule for given identifier.
+    * @param vestingScheduleId the vesting schedule identifier
+    */
+    function revoke(bytes32 vestingScheduleId)
+        public
+        onlyOwner
+        onlyIfVestingScheduleNotRevoked(vestingScheduleId){
+        VestingSchedule storage vestingSchedule = vestingSchedules[vestingScheduleId];
+        require(vestingSchedule.revocable == true, "TokenVesting: vesting is not revocable");
+        uint256 vestedAmount = _computeReleasableAmount(vestingSchedule);
+        if(vestedAmount > 0){
+            release(vestingScheduleId, vestedAmount);
         }
-        return true;
+        uint256 unreleased = vestingSchedule.amountTotal - vestingSchedule.released;
+        vestingSchedulesTotalAmount = vestingSchedulesTotalAmount - unreleased;
+        vestingSchedule.revoked = true;
     }
 
-    function setStakingBeneficiary (address beneficiary) public onlyOwner returns (bool) {
-        _beneficiary[_staking] = beneficiary;
-        return true;
+    /**
+    * @notice Withdraw the specified amount if possible.
+    * @param amount the amount to withdraw
+    */
+    function withdraw(uint256 amount)
+        public
+        nonReentrant
+        onlyOwner{
+        require(this.getWithdrawableAmount() >= amount, "TokenVesting: not enough withdrawable funds");
+        _token.safeTransfer(owner(), amount);
     }
 
-    function EcosystemVestingAmount () external view returns (uint256[] memory) {
-        return(_vestingAmount[_ecosystem]);
+    /**
+    * @notice Release vested amount of tokens.
+    * @param vestingScheduleId the vesting schedule identifier
+    * @param amount the amount to release
+    */
+    function release(
+        bytes32 vestingScheduleId,
+        uint256 amount
+    )
+        public
+        nonReentrant
+        onlyIfVestingScheduleNotRevoked(vestingScheduleId){
+        VestingSchedule storage vestingSchedule = vestingSchedules[vestingScheduleId];
+        bool isBeneficiary = msg.sender == vestingSchedule.beneficiary;
+        bool isOwner = msg.sender == owner();
+        require(
+            isBeneficiary || isOwner,
+            "TokenVesting: only beneficiary and owner can release vested tokens"
+        );
+        uint256 vestedAmount = _computeReleasableAmount(vestingSchedule);
+        require(vestedAmount >= amount, "TokenVesting: cannot release tokens, not enough vested tokens");
+        vestingSchedule.released = vestingSchedule.released + amount;
+        address payable beneficiaryPayable = payable(vestingSchedule.beneficiary);
+        vestingSchedulesTotalAmount = vestingSchedulesTotalAmount - amount;
+        _token.safeTransfer(beneficiaryPayable, amount);
     }
 
-    function ecosystemBeneficiary() public view returns (address) {
-        return _beneficiary[_ecosystem];
+    /**
+    * @dev Returns the number of vesting schedules managed by this contract.
+    * @return the number of vesting schedules
+    */
+    function getVestingSchedulesCount()
+        public
+        view
+        returns(uint256){
+        return vestingSchedulesIds.length;
     }
 
-    function SetEcosystemVestingAmount (uint256[] memory vestingAmount) public onlyOwner returns (bool) {
-        _vestingAmount[_ecosystem] = vestingAmount;
-        return true;
+    /**
+    * @notice Computes the vested amount of tokens for the given vesting schedule identifier.
+    * @return the vested amount
+    */
+    function computeReleasableAmount(bytes32 vestingScheduleId)
+        public
+        onlyIfVestingScheduleNotRevoked(vestingScheduleId)
+        view
+        returns(uint256){
+        VestingSchedule storage vestingSchedule = vestingSchedules[vestingScheduleId];
+        return _computeReleasableAmount(vestingSchedule);
     }
 
-    function setEcosystemBeneficiary (address beneficiary) public onlyOwner returns (bool) {
-        _beneficiary[_ecosystem] = beneficiary;
-        return true;
+    /**
+    * @notice Returns the vesting schedule information for a given identifier.
+    * @return the vesting schedule structure information
+    */
+    function getVestingSchedule(bytes32 vestingScheduleId)
+        public
+        view
+        returns(VestingSchedule memory){
+        return vestingSchedules[vestingScheduleId];
     }
 
-    function Trigger () public onlyOwner returns (bool) {
-        require(!_isTriggered, "Already triggered");
-        _isTriggered = true;
-        _start = block.timestamp;
-        return true;
+    /**
+    * @dev Returns the amount of tokens that can be withdrawn by the owner.
+    * @return the amount of tokens
+    */
+    function getWithdrawableAmount()
+        public
+        view
+        returns(uint256){
+        return _token.balanceOf(address(this)) - vestingSchedulesTotalAmount;
     }
 
-    function  Month () public view returns(uint256) {
-        require(_isTriggered, "Not triggered yet!");
-        return getMonth(block.timestamp);
+    /**
+    * @dev Computes the next vesting schedule identifier for a given holder address.
+    */
+    function computeNextVestingScheduleIdForHolder(address holder)
+        public
+        view
+        returns(bytes32){
+        return computeVestingScheduleIdForAddressAndIndex(holder, holdersVestingCount[holder]);
     }
 
-    function getMonth (uint256 time) public view returns (uint256) {
-        require(_isTriggered, "Not triggered yet");
-        uint256 month = (time.sub(_start)).div(30 days).add(1);
-        return month;
-    } 
+    /**
+    * @dev Returns the last vesting schedule for a given holder address.
+    */
+    function getLastVestingScheduleForHolder(address holder)
+        public
+        view
+        returns(VestingSchedule memory){
+        return vestingSchedules[computeVestingScheduleIdForAddressAndIndex(holder, holdersVestingCount[holder] - 1)];
+    }
 
-    function vestedAmount (uint256 fundId) public view returns (uint256) {
-        uint256 vested = 0;
-        for (uint256 i = 0; i < Month(); i.add(1)) {
-            vested = vested.add(_vestingAmount[fundId][i]);
+    /**
+    * @dev Computes the vesting schedule identifier for an address and an index.
+    */
+    function computeVestingScheduleIdForAddressAndIndex(address holder, uint256 index)
+        public
+        pure
+        returns(bytes32){
+        return keccak256(abi.encodePacked(holder, index));
+    }
+
+    /**
+    * @dev Computes the releasable amount of tokens for a vesting schedule.
+    * @return the amount of releasable tokens
+    */
+    function _computeReleasableAmount(VestingSchedule memory vestingSchedule)
+    internal
+    view
+    returns(uint256){
+        uint256 currentTime = getCurrentTime();
+        if ((currentTime < vestingSchedule.cliff) || vestingSchedule.revoked == true) {
+            return 0;
+        } else if (currentTime >= vestingSchedule.start + vestingSchedule.duration) {
+            return vestingSchedule.amountTotal - vestingSchedule.released;
+        } else {
+            uint256 timeFromStart = currentTime - vestingSchedule.start;
+            uint secondsPerSlice = vestingSchedule.slicePeriodSeconds;
+            uint256 vestedSlicePeriods = timeFromStart/secondsPerSlice;
+            uint256 vestedSeconds = vestedSlicePeriods * secondsPerSlice;
+            uint256 vestedAmount = vestingSchedule.amountTotal * vestedSeconds/vestingSchedule.duration;
+            vestedAmount = vestedAmount - vestingSchedule.released;
+            return vestedAmount;
         }
-        return vested;
     }
 
-    function quarterVestingAmount (uint256 quarter) public view returns (uint256) {
-        uint256 amount = 0;
-        for (uint256 i = quarter.mul(3).sub(3); i < quarter.mul(3); i++){
-            for(uint256 fundId = 1; fundId <= 8; fundId++) {
-                amount = amount.add(_vestingAmount[fundId][i]);
-            }
-        }
-        return amount;
+    function getCurrentTime()
+        internal
+        virtual
+        view
+        returns(uint256){
+        return block.timestamp;
     }
 
-    function quarterTotalVestingAmount (uint256 quarter) public view returns (uint256) {
-        uint256 amount = 0;
-        for (uint256 i = 0; i < quarter.mul(3); i++){
-            for(uint256 fundId = 1; fundId <= 8; fundId++) {
-                amount = amount.add(_vestingAmount[fundId][i]);
-            }
-        }
-        return amount;
-    }
-
-    function tillMonthTotalVestingAmount (uint256 month) public view returns (uint256) {
-        uint256 amount = 0;
-        for (uint256 i = 0; i < month; i++){
-            for(uint256 fundId = 1; fundId <= 8; fundId++) {
-                amount = amount.add(_vestingAmount[fundId][i]);
-            }
-        }
-        return amount;
-    }
-
-    function quarterVestingAmountOfStakingReward (uint256 quarter) public view returns (uint256) {
-        uint256 amount = 0;
-        for (uint256 i = quarter.mul(3).sub(3); i < quarter.mul(3); i++){
-            amount = amount.add(_vestingAmount[_staking][i]);
-        }
-        return amount;
-    }
-
-    function monthVestingAmountOfStakingReward30 (uint256 month) public view returns (uint256) {
-        return _vestingAmount[_staking30][month.sub(1)];
-    }
-
-    function bimonthVestingAmountOfStakingReward60 (uint256 bimonth) public view returns (uint256) {
-        uint256 amount = 0;
-        for (uint256 i = bimonth.mul(2).sub(2); i < bimonth.mul(2); i++){
-            amount = amount.add(_vestingAmount[_staking60][i]);
-        }
-        return amount;
-    }
-
-    function quarterVestingAmountOfStakingReward90 (uint256 quarter) public view returns (uint256) {
-        uint256 amount = 0;
-        for (uint256 i = quarter.mul(3).sub(3); i < quarter.mul(3); i++){
-            amount = amount.add(_vestingAmount[_staking90][i]);
-        }
-        return amount;
-    }
-
-    function releasableAmount (uint256 fundId) public view returns (uint256) {
-        return vestedAmount(fundId).sub(released[fundId]);
-    }
-
-    function releaseSeedRound() public onlyOwner returns (bool) {
-        return _release(_seedRound);
-    }
-
-    function releasePrivateRound() public onlyOwner returns (bool) {
-        return _release(_privateRound);
-    }
-
-    function releasePublicRound() public onlyOwner returns (bool) {
-        return _release(_publicRound);
-    }
-
-    function releaseTeam() public onlyOwner returns (bool) {
-        return _release(_team);
-    }
-
-    function releaseP2E() public onlyOwner returns (bool) {
-        return _release(_p2e);
-    }
-
-    function releaseStaking() public onlyOwner returns (bool) {
-        return _release(_staking);
-    }
-
-    function releaseEcosystem() public onlyOwner returns (bool) {
-        return _release(_ecosystem);
-    }
-
-    function releaseAdvisors() public onlyOwner returns (bool) {
-        return _release(_advisors);
-    }
-
-    function _release (uint256 fundId) internal onlyOwner returns (bool) {
-        uint256 unreleased = releasableAmount(fundId);
-        require(_isTriggered, "Not triggered yet");
-        require(unreleased > 0, "No releasable amount");
-        require(released[fundId].add(unreleased) <= allocation[fundId], "This release would exceed the allocated amount");
-        require(_beneficiary[fundId] != address(0), "Beneficiary address not set");
-        released[fundId] = released[fundId].add(unreleased);
-        _racekingdom.transfer(_beneficiary[fundId], unreleased);
-        return true;
-    }
 }
-
