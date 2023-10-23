@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.14;
+pragma solidity 0.8.19;
 
 interface IRaceKingdom {
     function getOwner() external view returns (address);

@@ -32,7 +32,7 @@ module.exports = {
       mainnet: {
          url: "https://bsc-dataseed.binance.org/",
          chainId: 56,
-         gasPrice: 20000000000,
+         // gasPrice: 20000000000,
          accounts: [`0x${PRIVATE_KEY}`]
       }
    },
@@ -42,7 +42,7 @@ module.exports = {
       apiKey: BSC_API_KEY
    },
    solidity: {
-      version: "0.8.14",
+      version: "0.8.19",
       settings: {
          optimizer: {
             enabled: true
