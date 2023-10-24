@@ -1,5 +1,5 @@
 async function main() {
-  const Contract = await ethers.getContractFactory("KingFox");
+  const Contract = await ethers.getContractFactory("HotFox");
 
   const contract = await Contract.deploy();
   await contract.deployed();
