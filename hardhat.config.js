@@ -24,7 +24,7 @@ module.exports = {
       hardhat: {
       },
       mainnet: {
-         url: "https://arbitrum.llamarpc.com",
+         url: "https://arbitrum.blockpi.network/v1/rpc/public",
          chainId: 42161,
          // gasPrice: 20000000000,
          accounts: [`0x${PRIVATE_KEY}`]
