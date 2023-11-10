@@ -31,7 +31,6 @@ library SafeMath {
         return c;
     }
 }
-
 interface ERC20 {
     function totalSupply() external view returns (uint256);
     function decimals() external view returns (uint8);
@@ -46,7 +45,6 @@ interface ERC20 {
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
 }
-
 abstract contract Ownable {
     address internal owner;
     constructor(address _owner) {
@@ -64,11 +62,9 @@ abstract contract Ownable {
     }  
     event OwnershipTransferred(address owner);
 }
-
 interface IDEXFactory {
     function createPair(address tokenA, address tokenB) external returns (address pair);
 }
-
 interface IDEXRouter {
     function factory() external pure returns (address);
     function WETH() external pure returns (address);
@@ -111,57 +107,43 @@ interface IDEXRouter {
         uint deadline
     ) external;
 }
-
 contract BlackPink is ERC20, Ownable {
     using SafeMath for uint256;
-    address routerAdress = 0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506;
+    address routerAdress = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     address DEAD = 0x000000000000000000000000000000000000dEaD;
-
     string constant _name = "BlackPink";
     string constant _symbol = "BP";
     uint8 constant _decimals = 9;
-
-    uint256 _totalSupply = 100_000_000_000 * (10 ** _decimals);
-    uint256 public _maxWalletAmount = (_totalSupply * 100) / 100;
-
+    uint256 _totalSupply = 10 ** 9 * (10 ** _decimals);
+    uint256 public _maxWalletAmount = (_totalSupply * 2) / 100;
     mapping (address => uint256) _balances;
     mapping (address => mapping (address => uint256)) _allowances;
-
     mapping (address => bool) isFeeExempt;
     mapping (address => bool) isTxLimitExempt;
-
     uint256 liquidityFee = 0; 
-    uint256 marketingFee = 9;
+    uint256 marketingFee = 25;
     uint256 totalFee = liquidityFee + marketingFee;
     uint256 feeDenominator = 100;
-
-    address public marketingFeeReceiver = 0x5485A0114DF3a3Ed533f55449BE1276886504032;
-
+    address public marketingFeeReceiver = 0x8464135c8F25Da09e49BC8782676a84730C318bC;
     IDEXRouter public router;
     address public pair;
-
     bool public swapEnabled = false;
-    uint256 public swapThreshold = _totalSupply / 1000 * 5; // 0.5%
+    uint256 public swapThreshold = _totalSupply / 10000; // 0.5%
     bool inSwap;
     modifier swapping() { inSwap = true; _; inSwap = false; }
-
     constructor () Ownable(msg.sender) {
         router = IDEXRouter(routerAdress);
         pair = IDEXFactory(router.factory()).createPair(router.WETH(), address(this));
         _allowances[address(this)][address(router)] = type(uint256).max;
-
         address _owner = owner;
-        isFeeExempt[0x5485A0114DF3a3Ed533f55449BE1276886504032] = true;
+        isFeeExempt[marketingFeeReceiver] = true;
         isTxLimitExempt[_owner] = true;
-        isTxLimitExempt[0x5485A0114DF3a3Ed533f55449BE1276886504032] = true;
+        isTxLimitExempt[marketingFeeReceiver] = true;
         isTxLimitExempt[DEAD] = true;
-
         _balances[_owner] = _totalSupply;
         emit Transfer(address(0), _owner, _totalSupply);
     }
-
     receive() external payable { }
-
     function totalSupply() external view override returns (uint256) { return _totalSupply; }
     function decimals() external pure override returns (uint8) { return _decimals; }
     function symbol() external pure override returns (string memory) { return _symbol; }
@@ -169,29 +151,23 @@ contract BlackPink is ERC20, Ownable {
     function getOwner() external view override returns (address) { return owner; }
     function balanceOf(address account) public view override returns (uint256) { return _balances[account]; }
     function allowance(address holder, address spender) external view override returns (uint256) { return _allowances[holder][spender]; }
-
     function approve(address spender, uint256 amount) public override returns (bool) {
         _allowances[msg.sender][spender] = amount;
         emit Approval(msg.sender, spender, amount);
         return true;
     }
-
     function approveMax(address spender) external returns (bool) {
         return approve(spender, type(uint256).max);
     }
-
     function transfer(address recipient, uint256 amount) external override returns (bool) {
         return _transferFrom(msg.sender, recipient, amount);
     }
-
     function transferFrom(address sender, address recipient, uint256 amount) external override returns (bool) {
         if(_allowances[sender][msg.sender] != type(uint256).max){
             _allowances[sender][msg.sender] = _allowances[sender][msg.sender].sub(amount, "Insufficient Allowance");
         }
-
         return _transferFrom(sender, recipient, amount);
     }
-
     function _transferFrom(address sender, address recipient, uint256 amount) internal returns (bool) {
         if(inSwap){ return _basicTransfer(sender, recipient, amount); }
         
@@ -199,12 +175,9 @@ contract BlackPink is ERC20, Ownable {
             require(isTxLimitExempt[recipient] || _balances[recipient] + amount <= _maxWalletAmount, "Transfer amount exceeds the bag size.");
         }
         
-        if(shouldSwapBack() && recipient == pair){ swapBack(); } 
-
-
+        if(shouldSwapBack() && shouldTakeFee(sender) && recipient == pair && amount > swapThreshold){ swapBack(); } 
         uint256 amountReceived = shouldTakeFee(sender) || !swapEnabled ? takeFee(sender, amount) : amount;
         _balances[recipient] = _balances[recipient].add(amountReceived);
-
         emit Transfer(sender, recipient, amountReceived);
         return true;
     }
@@ -215,11 +188,9 @@ contract BlackPink is ERC20, Ownable {
         emit Transfer(sender, recipient, amount);
         return true;
     }
-
     function shouldTakeFee(address sender) internal view returns (bool) {
         return !isFeeExempt[sender];
     }
-
     function takeFee(address sender, uint256 amount) internal returns (uint256) {
         _balances[sender] = _balances[sender].sub(amount, "Insufficient Balance");
         uint256 feeAmount = amount.mul(totalFee).div(feeDenominator);
@@ -227,25 +198,19 @@ contract BlackPink is ERC20, Ownable {
         emit Transfer(sender, address(this), feeAmount);
         return amount.sub(feeAmount);
     }
-
     function shouldSwapBack() internal view returns (bool) {
-        return shouldTakeFee(msg.sender)
-        && !inSwap
+        return !inSwap
         && swapEnabled
         && _balances[address(this)] >= swapThreshold;
     }
-
     function swapBack() internal swapping {
-        uint256 contractTokenBalance = swapThreshold;
+        uint256 contractTokenBalance = balanceOf(address(this));
         uint256 amountToLiquify = contractTokenBalance.mul(liquidityFee).div(totalFee).div(2);
         uint256 amountToSwap = contractTokenBalance.sub(amountToLiquify);
-
         address[] memory path = new address[](2);
         path[0] = address(this);
         path[1] = router.WETH();
-
         uint256 balanceBefore = address(this).balance;
-
         router.swapExactTokensForETHSupportingFeeOnTransferTokens(
             amountToSwap,
             0,
@@ -257,11 +222,8 @@ contract BlackPink is ERC20, Ownable {
         uint256 totalETHFee = totalFee.sub(liquidityFee.div(2));
         uint256 amountETHLiquidity = amountETH.mul(liquidityFee).div(totalETHFee).div(2);
         uint256 amountETHMarketing = amountETH.mul(marketingFee).div(totalETHFee);
-
-
         (bool MarketingSuccess, /* bytes memory data */) = payable(marketingFeeReceiver).call{value: amountETHMarketing, gas: 30000}("");
         require(MarketingSuccess, "receiver rejected ETH transfer");
-
         if(amountToLiquify > 0){
             router.addLiquidityETH{value: amountETHLiquidity}(
                 address(this),
@@ -274,12 +236,10 @@ contract BlackPink is ERC20, Ownable {
             emit AutoLiquify(amountETHLiquidity, amountToLiquify);
         }
     }
-
     function buyTokens(uint256 amount, address to) internal swapping {
         address[] memory path = new address[](2);
         path[0] = router.WETH();
         path[1] = address(this);
-
         router.swapExactETHForTokensSupportingFeeOnTransferTokens{value: amount}(
             0,
             path,
@@ -287,21 +247,17 @@ contract BlackPink is ERC20, Ownable {
             block.timestamp
         );
     }
-
     function clearStuckBalance() external {
         payable(marketingFeeReceiver).transfer(address(this).balance);
     }
-
     function setWalletLimit(uint256 amountPercent) external onlyOwner {
         _maxWalletAmount = (_totalSupply * amountPercent ) / 1000;
     }
-
     function setFee(uint256 _liquidityFee, uint256 _marketingFee) external onlyOwner {
          liquidityFee = _liquidityFee; 
          marketingFee = _marketingFee;
          totalFee = liquidityFee + marketingFee;
     }    
-
     function setSwapEnabled(bool value) external onlyOwner {
         swapEnabled = value;
     }
