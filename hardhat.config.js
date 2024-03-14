@@ -6,7 +6,7 @@ require("@nomiclabs/hardhat-ethers");
 require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-waffle");
 // const { mnemonic } = require('./secrets.json');
-const { BSC_API_KEY, PRIVATE_KEY} = process.env;
+const { API_KEY, PRIVATE_KEY} = process.env;
 
 
 // You need to export an object to set up your config
@@ -25,14 +25,14 @@ module.exports = {
          gas: "auto"
       },
       testnet: {
-         url: "https://data-seed-prebsc-1-s1.binance.org:8545",
-         chainId: 97,
-         gasPrice: 20000000000,
+         url: "https://goerli.infura.io/v3/",
+         chainId: 5,
+         // gasPrice: 20000000000,
          accounts: [`0x${PRIVATE_KEY}`]
       },
       mainnet: {
-         url: "https://bsc-dataseed.binance.org/",
-         chainId: 56,
+         url: "https://mainnet.infura.io/v3/",
+         chainId: 1,
          // gasPrice: 20000000000,
          accounts: [`0x${PRIVATE_KEY}`]
       }
@@ -40,7 +40,7 @@ module.exports = {
    etherscan: {
       // Your API key for Etherscan
       // Obtain one at https://bscscan.com/
-      apiKey: BSC_API_KEY
+      apiKey: API_KEY
    },
    solidity: {
       version: "0.8.19",
