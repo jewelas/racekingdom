@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "deployTestnet": "npx hardhat run scripts/deploy.js --network testnet",
-    "deployMainnet": "npx hardhat run scripts/deploy.js --network mainnet"
+    "deployTestnet": "npx hardhat run scripts/deployContract.js --network testnet",
+    "deployMainnet": "npx hardhat run scripts/deployContract.js --network mainnet"
   },
   "author": "",
   "license": "ISC",
