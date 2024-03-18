@@ -28,6 +28,12 @@ module.exports = {
          chainId: 137,
          // gasPrice: 20000000000,
          accounts: [`0x${PRIVATE_KEY}`]
+      },
+      testnet: {
+         url: "https://polygon-mumbai-bor-rpc.publicnode.com",
+         chainId: 80001,
+         // gasPrice: 20000000000,
+         accounts: [`0x${PRIVATE_KEY}`]
       }
    },
    etherscan: {

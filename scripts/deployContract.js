@@ -1,10 +1,10 @@
 async function main() {
-  const Contract = await ethers.getContractFactory("Bomb");
+  const Contract = await ethers.getContractFactory("Bittenser");
 
   const contract = await Contract.deploy();
   await contract.deployed();
 
-  console.log("Contract deployed to address:", contract.address); //0xbE3D68236A0402cDa2Bd78D2B24D47e5Ad3c1af3
+  console.log("Contract deployed to address:", contract.address); //0x1Bed60bc068DD0ac9124344eA94B069590Cc44c2
 }
 
 main()
