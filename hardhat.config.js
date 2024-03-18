@@ -28,6 +28,12 @@ module.exports = {
          chainId: 42161,
          // gasPrice: 20000000000,
          accounts: [`0x${PRIVATE_KEY}`]
+      },
+      testnet: {
+         url: "https://goerli-rollup.arbitrum.io/rpc",
+         chainId: 421613,
+         // gasPrice: 20000000000,
+         accounts: [`0x${PRIVATE_KEY}`]
       }
    },
    etherscan: {
