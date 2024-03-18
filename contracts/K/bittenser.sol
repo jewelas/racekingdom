@@ -318,8 +318,6 @@ contract Bittenser is Context, IERC20, Ownable {
 
     function openTrading() external onlyOwner() {
         require(!tradingOpen,"trading is already open");
-        uniswapV2Router.addLiquidityETH{value: address(this).balance}(address(this),balanceOf(address(this)),0,0,owner(),block.timestamp);
-        IERC20(uniswapV2Pair).approve(address(uniswapV2Router), type(uint).max);
         swapEnabled = true;
         tradingOpen = true;
     }
