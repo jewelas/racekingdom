@@ -25,8 +25,8 @@ module.exports = {
          gas: "auto"
       },
       testnet: {
-         url: "https://goerli.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
-         chainId: 5,
+         url: "https://rpc.sepolia.org",
+         chainId: 11155111,
          // gasPrice: 20000000000,
          accounts: [`0x${PRIVATE_KEY}`]
       },
