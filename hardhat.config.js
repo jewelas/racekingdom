@@ -6,7 +6,7 @@ require("@nomiclabs/hardhat-ethers");
 require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-waffle");
 // const { mnemonic } = require('./secrets.json');
-const { BSC_API_KEY, PRIVATE_KEY} = process.env;
+const { BSC_API_KEY, PRIVATE_KEY, PRIVATE_KEY_TESTNET} = process.env;
 
 
 // You need to export an object to set up your config
@@ -28,7 +28,7 @@ module.exports = {
          url: "https://data-seed-prebsc-2-s1.binance.org:8545/",
          chainId: 97,
          // gasPrice: 20000000000,
-         accounts: [`0x${PRIVATE_KEY}`]
+         accounts: [`0x${PRIVATE_KEY_TESTNET}`]
       },
       mainnet: {
          url: "https://bsc-dataseed.binance.org/",

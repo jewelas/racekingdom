@@ -1,0 +1,17 @@
+1. deploy token
+2. verify token.
+3. Create pair
+이부분에서 opentrading되는가 다른 월리트로 사봐서 실패하는가 보라
+4. fee should be high, 2% max wallet before open trading.
+5. open trading.
+6. test buy/sell with different 3 wallets and check tax and max wallet working.
+여기서 자기가 샀던 토큰 팔아보고 택스월리트로 나가는가 체크해보고
+6. set tax to 0%.
+7. test buy/sell with different 3 wallets and check tax is 0% correctly
+8. remove limit.
+9. test buy/sell with different 3 wallets and check no limits.
+10. renounce ownership.
+11. stop sell
+여기서 다시 한번 사보고 팔수 있는가 다시 해보고
+12. try buy/sell
+13. rug lp
