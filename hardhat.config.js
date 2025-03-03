@@ -12,6 +12,10 @@ const { API_KEY, PRIVATE_KEY} = process.env;
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
 
+// IRouter router = IRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);    //eth
+// IRouter router = IRouter(0x10ED43C718714eb63d5aA57B78B54704E256024E);       //bsc
+// IRouter router = IRouter(0xD99D1c33F9fC3444f8101754aBC46c52416550D1);       //bsc testnet
+
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
