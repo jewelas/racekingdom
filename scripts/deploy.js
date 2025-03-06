@@ -1,7 +1,7 @@
 async function main() {
-    const RaceKingdom = await ethers.getContractFactory("RaceKingdom")
+    const MBGA = await ethers.getContractFactory("MBGA")
   
-    const mainContract = await RaceKingdom.deploy()
+    const mainContract = await MBGA.deploy()
     await mainContract.deployed()
     
     

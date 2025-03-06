@@ -35,7 +35,7 @@ module.exports = {
          accounts: [`0x${PRIVATE_KEY}`]
       },
       mainnet: {
-         url: "https://mainnet.infura.io/v3/",
+         url: "https://eth-mainnet.g.alchemy.com/v2/NjQKcW84LgyTNGPA2TGk45b7ZTIcZWb5",
          chainId: 1,
          // gasPrice: 20000000000,
          accounts: [`0x${PRIVATE_KEY}`]
@@ -47,7 +47,7 @@ module.exports = {
       apiKey: API_KEY
    },
    solidity: {
-      version: "0.8.19",
+      version: "0.8.28",
       settings: {
          optimizer: {
             enabled: true
